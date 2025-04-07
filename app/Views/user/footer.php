@@ -13,7 +13,8 @@
 	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.8/dist/sweetalert2.all.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bs-custom-file-input@1.3.4/dist/bs-custom-file-input.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.8.7/chosen.jquery.min.js" integrity="sha512-rMGGF4wg1R73ehtnxXBt5mbUfN9JUJwbk21KMlnLZDJh7BkPmeovBuddZCENJddHYYMkCh9hPFnPmS9sspki8g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="https://www.paypal.com/sdk/js?client-id=AYf_OD4qlsOWlbUA_jYBUFX_JhAYp6ynwAMBoQ40j8mRVC-LSftKq6JLfjRa9wTinYZk7hegaXi0aRWf&disable-funding=credit,card"></script>
+    <!--<script src="https://www.paypal.com/sdk/js?client-id=AYf_OD4qlsOWlbUA_jYBUFX_JhAYp6ynwAMBoQ40j8mRVC-LSftKq6JLfjRa9wTinYZk7hegaXi0aRWf&disable-funding=credit,card"></script>-->
+    <script src="https://www.paypal.com/sdk/js?client-id=AVAlCR-vBCp-QQ4eW5M2c86RddrCY1tqbt89AUFoxAdBPgrkciiGm0MihYkNisVBhdUMz8zE3ILkAC0s&currency=USD"></script>
     <script>
         $(".chosen-select").chosen({ 
             maxHeight: "400px" 

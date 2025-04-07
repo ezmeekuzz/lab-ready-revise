@@ -1,19 +1,19 @@
 $(document).ready(function () {
     $(document).on('click', '.quotationDetails', function () {
-        let userQuotationId = $(this).data("id");
+        let quotationReponseId = $(this).data("id");
         let quotationId = $(this).data("quotation-id");
         let productAmount = $(this).data('amount');
 
         $.ajax({
             type: "GET",
             url: "/quotations/quotationDetails",
-            data: { userQuotationId: userQuotationId },
+            data: { quotationReponseId: quotationReponseId },
             success: function (response) {
                 // Access specific properties from the response object
-                let quotationDate = moment(response.quotationdate).format('MMMM DD, YYYY');
-                let invoiceFile = response.invoicefile; // Assuming you have a PDF URL property
-                let productName = response.productname;
-                let productPrice = response.productprice;
+                let quotationDate = moment(response.created_at).format('MMMM DD, YYYY');
+                let invoiceFile = response.invoice_file_location; // Assuming you have a PDF URL property
+                let productName = response.quotation_name;
+                let productPrice = response.price;
                 let shipmentLink = response.shipment_link;
 
                 // Format the content as HTML
@@ -26,7 +26,7 @@ $(document).ready(function () {
                 if (shipmentLink) {
                     htmlContent += '<div class="date mt-3"><strong>Track Order:</strong> <a href="' + shipmentLink + '" target="_blank">Track Order</a></div>';
                 }
-                if (response.status === 'Unpaid') {
+                if (response.payment_status === 'Unpaid') {
                     htmlContent += '<div class="row">';
                     htmlContent += '<div class="mb-3 mt-3 col-lg-12">';
                     htmlContent += '<div id="paypalButton" class="form-group"></div>';
@@ -81,7 +81,7 @@ $(document).ready(function () {
                 // Render PayPal button after content is loaded
                 paypal.Buttons({
                     createOrder: (data, actions) => {
-                        if (userQuotationId !== '' && productAmount !== '') {
+                        if (quotationReponseId !== '' && productAmount !== '') {
                             return actions.order.create({
                                 purchase_units: [{
                                     amount: {
@@ -104,6 +104,7 @@ $(document).ready(function () {
                             // Create FormData with only quotation ID (no shipping details)
                             const formData = new FormData();
                             formData.append('quotationId', quotationId);
+                            formData.append('quotationReponseId', quotationReponseId);
                 
                             // Send the payment capture details via AJAX
                             $.ajax({
@@ -232,7 +233,8 @@ $(document).ready(function () {
                                             state: formData.state,
                                             zipcode: formData.zipcode,
                                             phoneNumber: formData.phoneNumber,
-                                            quotationId: quotationId
+                                            quotationId: quotationId,
+                                            quotationReponseId: quotationReponseId,
                                         },
                                         success: function (response) {
                                             const { success, message } = response;
@@ -393,7 +395,7 @@ $(document).ready(function () {
                             <div class="col-xl-3 col-sm-6">
                                 <div class="card card-statistics position-relative">
                                     <div class="delete-btn">
-                                        <button class="btn btn-danger delete-quotation" data-id="${item.quotation_id}">Delete</button>
+                                        <button class="btn btn-danger delete-quotation" data-id="${item.user_receive_quotation_response_id}">Delete</button>
                                     </div>
                                     <div class="card-body">
                                         <div class="d-flex align-items-start">
@@ -412,7 +414,7 @@ $(document).ready(function () {
                                                     minute: '2-digit',
                                                     hour12: true
                                                   })}</span></p>
-                                                <a href="javascript:void(0)" class="btn btn-light quotationDetails" data-quotation-id="${item.quotation_id}" data-id="${item.user_quotation_id}" data-amount="${item.productprice}">Open</a>
+                                                <a href="javascript:void(0)" class="btn btn-light quotationDetails" data-quotation-id="${item.quotation_id}" data-id="${item.quotation_response_id}" data-amount="${item.price}">Open</a>
                                             </div>
                                         </div>
                                     </div>

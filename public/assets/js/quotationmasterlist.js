@@ -198,6 +198,10 @@ $(document).ready(function () {
                                 <label for="shipment_link">Shipment Link</label>
                                 <input type="text" id="shipment_link" class="form-control" value="${data.shipment_link || ''}" placeholder="Shipment Link">
                             </div>
+                            <div class="form-group mt-3">
+                                <label for="delivery_date">Expected Delivery Date</label>
+                                <input type="date" id="delivery_date" class="form-control" value="${data.delivery_date || ''}">
+                            </div>
                         `,
                         showCancelButton: true,
                         confirmButtonText: 'Update',
@@ -213,6 +217,7 @@ $(document).ready(function () {
                                         fullname: document.getElementById('fullname').value,
                                         reference: document.getElementById('reference').value,
                                         shipment_link: document.getElementById('shipment_link').value,
+                                        delivery_date: document.getElementById('delivery_date').value,
                                         email: document.getElementById('email').value
                                     },
                                     success: function (response) {
@@ -220,7 +225,7 @@ $(document).ready(function () {
                                             Swal.fire({
                                                 icon: 'success',
                                                 title: 'Updated!',
-                                                text: 'Shipment status has been updated.',
+                                                text: 'Shipment status and delivery date have been updated.',
                                             });
                                             table.row($(`tr[data-id="${id}"]`)).draw(false);
                                         } else {
@@ -262,5 +267,5 @@ $(document).ready(function () {
                 });
             }
         });
-    });    
+    });  
 });

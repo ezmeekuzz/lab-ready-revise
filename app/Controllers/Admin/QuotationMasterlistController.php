@@ -23,22 +23,29 @@ class QuotationMasterlistController extends SessionController
 
     public function getData()
     {
-        // Get the year and month from the request
-        $year = $this->request->getPost('year') ?: date('Y');   // Default to current year if not provided
-        $month = $this->request->getPost('month') ?: date('m'); // Default to current month if not provided
-    
-        // Start the query
+        // Start the base query
         $query = datatables('quotation_responses')
             ->select('quotations.*, quotation_responses.*, users.*, quotations.user_id as uid')
             ->join('quotations', 'quotation_responses.quotation_id = quotations.quotation_id', 'LEFT JOIN')
-            ->join('users', 'quotations.user_id = users.user_id', 'LEFT JOIN')
-            ->where('YEAR(quotations.created_at)', $year)     // Filter by the year (default or selected)
-            ->where('MONTH(quotations.created_at)', $month);  // Filter by the month (default or selected)
+            ->join('users', 'quotations.user_id = users.user_id', 'LEFT JOIN');
     
-        // Return the filtered data
+        // Get the year and month from the request if they exist
+        $year = $this->request->getPost('year');
+        $month = $this->request->getPost('month');
+    
+        // Apply filters only if both year and month are provided
+        if ($year) {
+            $query->where('YEAR(quotation_responses.response_date)', $year);
+        }
+    
+        // Apply filters only if both year and month are provided
+        if ($month) {
+            $query->where('MONTH(quotation_responses.response_date)', $month);
+        }
+    
+        // Return the data (filtered if year/month provided, otherwise all data)
         return $query->make();
     }
-    
 
     public function delete($id)
     {
@@ -93,8 +100,7 @@ class QuotationMasterlistController extends SessionController
     {
         $shipmentsModel = new ShipmentsModel();
         $quotationsModel = new QuotationsModel();
-        $requestQuotationsModel = new RequestQuotationModel();
-        $requestQuotationsModel = new RequestQuotationModel();
+        $quotationResponsesModel = new QuotationResponsesModel();
 
         $data = $this->request->getPost();
         $validation = \Config\Services::validation();
@@ -112,6 +118,7 @@ class QuotationMasterlistController extends SessionController
             'shipment_link' => $data['shipment_link'],
             'reference' => $data['reference'],
             'fullname' => $data['fullname'],
+            'delivery_date' => $data['delivery_date'],
         ];
 
         $existingShipment = $shipmentsModel->where('quotation_id', $id)->first();
@@ -119,12 +126,12 @@ class QuotationMasterlistController extends SessionController
 
         if ($existingShipment) {
             $update = $shipmentsModel->update($existingShipment['shipment_id'], $shipmentData);
-            $requestQuotationsModel
+            $quotationsModel
             ->where('quotation_id', $quotationDetails['quotation_id'])
             ->set('status', 'Shipped')->update();
         } else {
             $update = $shipmentsModel->insert($shipmentData);
-            $requestQuotationsModel
+            $quotationsModel
             ->where('quotation_id', $quotationDetails['quotation_id'])
             ->set('status', 'Shipped')->update();
         }

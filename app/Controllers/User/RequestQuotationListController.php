@@ -26,33 +26,18 @@ class RequestQuotationListController extends SessionController
         $month = $this->request->getPost('month');
         $year = $this->request->getPost('year');
     
-        // Get the current month and year if the filters are not provided
-        $currentYear = date('Y');
-        $currentMonth = date('m');
-    
         // Start your datatable query
         $query = datatables('quotations')
             ->where('status !=', 'Ongoing')
             ->where('user_id', session()->get('user_user_id'));
-    
-        // If month and year are not provided, filter by the current month and year
-        if (!$year && !$month) {
-            $query = $query->where('YEAR(created_at)', $currentYear)
-                           ->where('MONTH(created_at)', $currentMonth);
-        }
+
         // If only year is provided, filter by the year
-        elseif ($year && !$month) {
+        if ($year) {
             $query = $query->where('YEAR(created_at)', $year);
         }
         // If only month is provided, filter by the current year and the provided month
-        elseif ($month && !$year) {
-            $query = $query->where('YEAR(created_at)', $currentYear)
-                           ->where('MONTH(created_at)', $month);
-        }
-        // If both month and year are provided, filter by them
-        elseif ($month && $year) {
-            $query = $query->where('YEAR(created_at)', $year)
-                           ->where('MONTH(created_at)', $month);
+        if ($month) {
+            $query = $query->where('MONTH(created_at)', $month);
         }
     
         // Return the filtered data
@@ -118,40 +103,66 @@ class RequestQuotationListController extends SessionController
     
         // Prepare new quotation data
         $newQuotationData = [
-            'user_id'         => session()->get('user_user_id'),
-            'quotation_name'  => $newName,
-            'reference_number'  => $referenceNumber,
-            'status'          => 'Pending',  // Reset status to Pending
-            'created_at'      => date('Y-m-d H:i:s'),
-            'updated_at'      => date('Y-m-d H:i:s'),
+            'user_id' => session()->get('user_user_id'),
+            'quotation_name' => $newName,
+            'reference_number' => $referenceNumber,
+            'status' => 'Pending',
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
         ];
     
         // Insert new quotation
         $newQuotationId = $quotationsModel->insert($newQuotationData);
     
-        if ($newQuotationId) {
-            // Fetch all items from the original quotation
-            $originalItems = $itemsModel->where('quotation_id', $id)->findAll();
-    
-            if (!empty($originalItems)) {
-                foreach ($originalItems as $item) {
-                    unset($item['item_id']); // Remove original item ID to avoid conflicts
-                    $item['quotation_id'] = $newQuotationId; // Assign new quotation ID
-    
-                    // Duplicate the files and rename them
-                    $item['cad_file_location'] = $this->duplicateFile($item['cad_file_location']);
-                    $item['stl_file_location'] = $this->duplicateFile($item['stl_file_location']);
-                    $item['print_file_location'] = $this->duplicateFile($item['print_file_location']);
-    
-                    // Insert duplicated item
-                    $itemsModel->insert($item);
-                }
-            }
-    
-            return $this->response->setJSON(['success' => true, 'message' => 'Quotation duplicated successfully!']);
-        } else {
-            return $this->response->setJSON(['success' => false, 'message' => 'Failed to duplicate quotation.']);
+        if (!$newQuotationId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Failed to create new quotation.']);
         }
+    
+        // Fetch all items from the original quotation
+        $originalItems = $itemsModel->where('quotation_id', $id)->findAll();
+    
+        if (empty($originalItems)) {
+            return $this->response->setJSON(['success' => true, 'message' => 'Quotation duplicated (no items to copy).']);
+        }
+    
+        $itemsCopied = 0;
+        $errors = [];
+    
+        foreach ($originalItems as $item) {
+            try {
+                $newItem = $item;
+                unset($newItem['item_id']); // Remove original item ID
+                
+                // Duplicate files (handle each file separately)
+                $newItem['cad_file_location'] = $this->duplicateFile($item['cad_file_location'] ?? null);
+                $newItem['stl_file_location'] = $this->duplicateFile($item['stl_file_location'] ?? null);
+                $newItem['print_file_location'] = $this->duplicateFile($item['print_file_location'] ?? null);
+                
+                $newItem['quotation_id'] = $newQuotationId;
+                
+                if ($itemsModel->insert($newItem)) {
+                    $itemsCopied++;
+                } else {
+                    $errors[] = "Failed to insert item {$item['item_id']}";
+                }
+            } catch (\Exception $e) {
+                $errors[] = "Error copying item {$item['item_id']}: " . $e->getMessage();
+            }
+        }
+    
+        if (!empty($errors)) {
+            log_message('error', 'Item duplication errors: ' . implode(', ', $errors));
+            return $this->response->setJSON([
+                'success' => true, 
+                'message' => "Quotation duplicated with {$itemsCopied} items (some items may not have copied)",
+                'errors' => $errors
+            ]);
+        }
+    
+        return $this->response->setJSON([
+            'success' => true,
+            'message' => "Quotation duplicated successfully with {$itemsCopied} items!"
+        ]);
     }
     
     /**
@@ -159,21 +170,36 @@ class RequestQuotationListController extends SessionController
      */
     private function duplicateFile($filePath)
     {
-        if (!$filePath || !file_exists(FCPATH . $filePath)) {
-            return null; // Return null if file does not exist
+        if (empty($filePath)) {
+            return null;
+        }
+    
+        // Ensure path is relative to FCPATH
+        $filePath = ltrim($filePath, '/');
+        $sourcePath = FCPATH . $filePath;
+    
+        if (!file_exists($sourcePath)) {
+            log_message('error', "Source file not found: {$sourcePath}");
+            return null;
         }
     
         $pathInfo = pathinfo($filePath);
         $newFileName = $pathInfo['filename'] . '_' . time() . '.' . $pathInfo['extension'];
         $newFilePath = $pathInfo['dirname'] . '/' . $newFileName;
+        $destinationPath = FCPATH . $newFilePath;
     
-        // Copy the file to the new location
-        if (copy(FCPATH . $filePath, FCPATH . $newFilePath)) {
-            return $newFilePath; // Return new file path if copy is successful
-        } else {
-            return null; // Return null if copying fails
+        // Ensure destination directory exists
+        if (!is_dir(dirname($destinationPath))) {
+            mkdir(dirname($destinationPath), 0755, true);
         }
-    }    
+    
+        if (!copy($sourcePath, $destinationPath)) {
+            log_message('error', "Failed to copy file from {$sourcePath} to {$destinationPath}");
+            return null;
+        }
+    
+        return $newFilePath;
+    } 
     public function downloadAllFiles($quotation_id)
     {
         $quotationModel = new QuotationsModel();

@@ -136,7 +136,7 @@
             </div>
             <div class="content">
                 <div class="con-text email-content">
-                    <p>Hi <?=$fullname;?>. Your order (<?=$reference;?>) has been shipped!</p>
+                    <p>Hi <?=$fullname;?>. Your order (<?=$reference;?>) has been scheduled with an expected delivery date of <?=$delivery_date;?>.</p>
                     <p>See the tracking link below and feel free to contact us  with any questions.</p>
                     <p><a href="<?=$shipment_link;?>">Click here!</a></p>
                 </div>

@@ -28,8 +28,8 @@ class QuotationsController extends SessionController
         $search = $this->request->getVar('search');
     
         // Get year and month from request, or use the current year and month if not provided
-        $year = $this->request->getVar('year') ?: date('Y');
-        $month = $this->request->getVar('month') ?: date('m');
+        $year = $this->request->getVar('year');
+        $month = $this->request->getVar('month');
     
         // Query to get the quotations joined with related tables
         $quotationList = $userReceiveQuotationResponsesModel
@@ -44,8 +44,14 @@ class QuotationsController extends SessionController
         }
     
         // Apply year and month filter by default to the current year and month
-        $quotationList = $quotationList->where('YEAR(quotations.created_at)', $year)
-                                               ->where('MONTH(quotations.created_at)', $month);
+        
+        if ($year) {
+            $quotationList = $quotationList->where('YEAR(quotation_responses.response_date)', $year);
+        }
+        
+        if ($month) {
+            $quotationList = $quotationList->where('MONTH(quotation_responses.response_date)', $month);
+        }
     
         // Fetch the filtered quotations
         $quotationList = $quotationList->findAll();
@@ -56,68 +62,48 @@ class QuotationsController extends SessionController
     
     public function quotationDetails()
     {
-        $userQuotationId = $this->request->getVar('userQuotationId');
+        $quotationReponseId = $this->request->getVar('quotationReponseId');
         
-        $userQuotationsModel = new UserQuotationsModel();
-        $userQuotationsModel->where('user_quotation_id', $userQuotationId)
-        ->set('readstatus', 'Read')
-        ->update();
-        $quotationDetails = $userQuotationsModel
-        ->join('quotations', 'quotations.quotation_id=user_quotations.quotation_id', 'left')
-        ->join('shipments', 'quotations.quotation_id=shipments.quotation_id', 'left')
-        ->find($userQuotationId);
+        $quotationResponsesModel = new QuotationResponsesModel();
+        $quotationResponseDetails = $quotationResponsesModel
+        ->join('quotations', 'quotations.quotation_id=quotation_responses.quotation_id', 'left')
+        ->find($quotationReponseId);
         
-        return $this->response->setJSON($quotationDetails);
+        return $this->response->setJSON($quotationResponseDetails);
     }    
     public function pay()
     {
-        $quotationId = $this->request->getPost('quotationId');
-        $address = $this->request->getPost('address');
-        $city = $this->request->getPost('city');
-        $state = $this->request->getPost('state');
-        $zipcode = $this->request->getPost('zipcode');
         $quotationsModel = new QuotationsModel();
         $usersModel = new UsersModel();
-        $requestQuotationModel = new RequestQuotationModel();
-        $data = [
-            'quotationnId' => $quotationId
-        ];
-        $updated = $quotationsModel->where('quotation_id', $quotationId)
-        ->set('status', 'Paid')
-        ->set('address', $address)
-        ->set('city', $city)
-        ->set('state', $state)
-        ->set('zipcode', $zipcode)
-        ->update();
+        $quotationResponsesModel = new QuotationResponsesModel();
 
-        $quotationDetails = $quotationsModel->find($quotationId);
+        $quotationId = $this->request->getPost('quotationId');
+        $quotationReponseId = $this->request->getPost('quotationReponseId');
 
-        $requestQuotationModel->where('request_quotation_id', $quotationDetails['request_quotation_id'])
-        ->set('status', 'Paid')
-        ->update();
+        $updated = $quotationResponsesModel->update($quotationReponseId, ['payment_status' => 'Paid']);
+
+        $quotationResponseDetails = $quotationResponsesModel
+        ->join('quotations', 'quotations.quotation_id=quotation_responses.quotation_id', 'left')
+        ->find($quotationReponseId);
+
+        $quotationsModel->update($quotationId, ['status' => 'Done']);
     
         if ($updated) {
             $userDetails = $usersModel->find(session()->get('user_user_id'));
-            $requestQuotationDetails = $requestQuotationModel->find($quotationDetails['request_quotation_id']);
             $data = [
                 'userDetails' => $userDetails,
-                'requestQuotationDetails' => $requestQuotationDetails,
-                'quotationDetails' => $quotationDetails,
-                'address' => $address,
-                'city' => $city,
-                'state' => $state,
-                'zipcode' => $zipcode,
+                'quotationResponseDetails' => $quotationResponseDetails,
                 'phonenumber' => session()->get('user_phonenumber'),
             ];
             $message = view('emails/payment-success', $data);
             // Email sending code
-            $pdfFilePath = FCPATH . $quotationDetails['invoicefile'];
+            $pdfFilePath = FCPATH . $quotationResponseDetails['invoice_file_location'];
             $this->adminEmailReceived($data);
             $email = \Config\Services::email();
             $email->setTo($userDetails['email']);
             $email->setSubject('We\'ve got you\'re payment!');
             $email->setMessage($message);
-            $email->attach($pdfFilePath, 'attachment', $quotationDetails['filename']);
+            $email->attach($pdfFilePath, 'attachment', $quotationResponseDetails['invoice_file_name']);
             if ($email->send()) {
                 $response = [
                     'success' => true,
@@ -141,26 +127,23 @@ class QuotationsController extends SessionController
     private function adminEmailReceived($data)
     {
         $message = "";
-        $reference = $data['requestQuotationDetails']['reference'] ?? null; // Check if 'reference' exists
-        $productName = $data['quotationDetails']['productname'];
+        $reference = $data['quotationResponseDetails']['reference_number'] ?? null; // Check if 'reference' exists
+        $productName = $data['quotationResponseDetails']['quotation_name'];
 
         // Use the reference if it exists and is not empty, otherwise use the product name
         $message .= "An order has been paid with this Quotation Number: " . (!empty($reference) ? $reference : $productName).'<br/>';
         $message .= "<h3>Shipping Address</h3><br/>";
-        $message .= "<p>Address : ".$data['address']."</p>";
-        $message .= "<p>City : ".$data['city']."</p>";
-        $message .= "<p>State : ".$data['state']."</p>";
-        $message .= "<p>Zip Code : ".$data['zipcode']."</p>";
         $message .= "<p>Phone Number : ".$data['phonenumber']."</p>";
         $email = \Config\Services::email();
-        $email->setTo('charlie@lab-ready.net');
+        //$email->setTo('charlie@lab-ready.net');
+        $email->setTo('rustomcodilan@gmail.com');
         $email->setSubject('Quotation Payment');
         $email->setMessage($message);
         $email->send();
     }
     public function deleteQuotation($id)
     {
-        $userQuotationsModel = new UserQuotationsModel();
+        $userQuotationsModel = new UserReceiveQuotationResponsesModel();
     
         // Find the users by ID
         $quotations = $userQuotationsModel->find($id);
@@ -189,6 +172,7 @@ class QuotationsController extends SessionController
         $zipcode = $this->request->getPost('zipcode');
         $phoneNumber = $this->request->getPost('phoneNumber');
         $quotationId = $this->request->getPost('quotationId');
+        $quotationReponseId = $this->request->getPost('quotationReponseId');
     
         $config = new \Config\AuthorizeNet();
         $merchantAuthentication = new AnetAPI\MerchantAuthenticationType();
@@ -216,7 +200,8 @@ class QuotationsController extends SessionController
         $response = $controller->executeWithApiResponse($config->sandbox ? \net\authorize\api\constants\ANetEnvironment::SANDBOX : \net\authorize\api\constants\ANetEnvironment::PRODUCTION);
     
         $data = [
-            'quotationnId' => $quotationId
+            'quotationnId' => $quotationId,
+            'quotationReponseId' => $quotationReponseId,
         ];
         if ($response != null) {
             if ($response->getMessages()->getResultCode() == "Ok") {
@@ -224,44 +209,40 @@ class QuotationsController extends SessionController
     
                 if ($tresponse != null && $tresponse->getMessages() != null) {
                     $quotationsModel = new QuotationsModel();
-                    $requestQuotationsModel = new RequestQuotationModel();
+                    $quotationResponsesModel = new QuotationResponsesModel();
                     $usersModel = new UsersModel();
-                    $requestQuotationDetails = $requestQuotationsModel->where('request_quotation_id', $quotationId)->find();
+                    $quotationResponseDetails = $quotationResponsesModel
+                    ->join('quotations', 'quotations.quotation_id=quotation_responses.quotation_id', 'left')
+                    ->find($quotationReponseId);
                     $userDetails = $usersModel->find(session()->get('user_user_id'));
-                    $updated = $quotationsModel->where('quotation_id', $quotationId)
+                    $updated = $quotationResponsesModel->where('quotation_response_id', $quotationReponseId)
                         ->set('address', $address)
                         ->set('city', $city)
                         ->set('state', $state)
                         ->set('zipcode', $zipcode)
                         ->set('phonenumber', $phoneNumber)
-                        ->set('status', 'Paid')
+                        ->set('payment_status', 'Paid')
                         ->update();
-                    $quotationDetails = $quotationsModel->find($quotationId);
 
                     $data = [
                         'userDetails' => $userDetails,
-                        'quotationDetails' => $quotationDetails,
-                        'requestQuotationDetails' => $requestQuotationDetails,
+                        'quotationResponseDetails' => $quotationResponseDetails,
                         'address' => $address,
                         'city' => $city,
                         'state' => $state,
                         'zipcode' => $zipcode,
                         'phonenumber' => $phoneNumber,
                     ];
-                        
-                    $requestQuotationsModel->where('request_quotation_id', $quotationDetails['request_quotation_id'])
-                    ->set('status', 'Paid')
-                    ->update();
 
                     $message = view('emails/payment-success', $data);
                     // Email sending code
-                    $pdfFilePath = FCPATH . $quotationDetails['invoicefile'];
+                    $pdfFilePath = FCPATH . $quotationResponseDetails['invoice_file_location'];
                     $this->adminEmailReceived($data);
                     $email = \Config\Services::email();
                     $email->setTo($userDetails['email']);
                     $email->setSubject('We\'ve got you\'re payment!');
                     $email->setMessage($message);
-                    $email->attach($pdfFilePath, 'attachment', $quotationDetails['filename']);
+                    $email->attach($pdfFilePath, 'attachment', $quotationResponseDetails['invoice_file_name']);
                     if ($email->send()) {
                         $response = [
                             'success' => true,
@@ -346,76 +327,82 @@ class QuotationsController extends SessionController
     
         // Log the response for debugging
         log_message('info', 'Authorize.net Response: ' . print_r($response, true));
+        $data = [
+            'quotationnId' => $quotationId,
+            'quotationReponseId' => $quotationReponseId,
+        ];
+        if ($response != null) {
+            if ($response->getMessages()->getResultCode() == "Ok") {
+                $tresponse = $response->getTransactionResponse();
     
-        // Handle response and update database
-        if ($response != null && $response->getMessages()->getResultCode() == "Ok") {
-            $tresponse = $response->getTransactionResponse();
-            if ($tresponse != null && $tresponse->getMessages() != null) {
-                $quotationsModel = new QuotationsModel();
-                $requestQuotationsModel = new RequestQuotationModel();
-                $usersModel = new UsersModel();
-    
-                $updated = $quotationsModel->where('quotation_id', $quotationId)
-                    ->set('address', $address)
-                    ->set('city', $city)
-                    ->set('state', $state)
-                    ->set('zipcode', $zipcode)
-                    ->set('phonenumber', $phoneNumber)
-                    ->set('status', 'Paid')
-                    ->update();
-    
-                $quotationDetails = $quotationsModel->find($quotationId);
-                $requestQuotationDetails = $requestQuotationsModel->where('request_quotation_id', $quotationDetails['request_quotation_id'])->find();
-                $userDetails = $usersModel->find(session()->get('user_user_id'));
-    
-                // Send email notification
-                $data = [
-                    'userDetails' => $userDetails,
-                    'quotationDetails' => $quotationDetails,
-                    'requestQuotationDetails' => $requestQuotationDetails,
-                    'address' => $address,
-                    'city' => $city,
-                    'state' => $state,
-                    'zipcode' => $zipcode,
-                    'phonenumber' => $phoneNumber,
-                ];
-    
-                $message = view('emails/payment-success', $data);
-                $pdfFilePath = FCPATH . $quotationDetails['invoicefile'];
+                if ($tresponse != null && $tresponse->getMessages() != null) {
+                    $quotationsModel = new QuotationsModel();
+                    $quotationResponsesModel = new QuotationResponsesModel();
+                    $usersModel = new UsersModel();
+                    $quotationResponseDetails = $quotationResponsesModel
+                    ->join('quotations', 'quotations.quotation_id=quotation_responses.quotation_id', 'left')
+                    ->find($quotationReponseId);
+                    $userDetails = $usersModel->find(session()->get('user_user_id'));
+                    $updated = $quotationResponsesModel->where('quotation_response_id', $quotationReponseId)
+                        ->set('address', $address)
+                        ->set('city', $city)
+                        ->set('state', $state)
+                        ->set('zipcode', $zipcode)
+                        ->set('phonenumber', $phoneNumber)
+                        ->set('payment_status', 'Paid')
+                        ->update();
 
-                $this->adminEmailReceived($data);
-    
-                // Send Email
-                $email = \Config\Services::email();
-                $email->setTo($userDetails['email']);
-                $email->setSubject('We\'ve got your payment!');
-                $email->setMessage($message);
-                $email->attach($pdfFilePath, 'attachment', $quotationDetails['filename']);
-    
-                if ($email->send()) {
+                    $data = [
+                        'userDetails' => $userDetails,
+                        'quotationResponseDetails' => $quotationResponseDetails,
+                        'address' => $address,
+                        'city' => $city,
+                        'state' => $state,
+                        'zipcode' => $zipcode,
+                        'phonenumber' => $phoneNumber,
+                    ];
+
+                    $message = view('emails/payment-success', $data);
+                    // Email sending code
+                    $pdfFilePath = FCPATH . $quotationResponseDetails['invoice_file_location'];
+                    $this->adminEmailReceived($data);
+                    $email = \Config\Services::email();
+                    $email->setTo($userDetails['email']);
+                    $email->setSubject('We\'ve got you\'re payment!');
+                    $email->setMessage($message);
+                    $email->attach($pdfFilePath, 'attachment', $quotationResponseDetails['invoice_file_name']);
+                    if ($email->send()) {
+                        $response = [
+                            'success' => true,
+                            'message' => 'Successfully Paid!',
+                        ];
+                    } else {
+                        $response = [
+                            'success' => false,
+                            'message' => 'Failed to send message!',
+                        ];
+                    }
                     return $this->response->setJSON([
                         'success' => true,
                         'message' => 'Transaction Successful: ' . $tresponse->getMessages()[0]->getDescription()
                     ]);
                 } else {
-                    log_message('error', 'Email sending failed.');
+                    log_message('error', 'Transaction Failed: ' . $tresponse->getErrors()[0]->getErrorText());
                     return $this->response->setJSON([
                         'success' => false,
-                        'message' => 'Transaction successful, but email sending failed.'
+                        'message' => 'Transaction Failed: ' . $tresponse->getErrors()[0]->getErrorText()
                     ]);
                 }
             } else {
-                log_message('error', 'Transaction failed: ' . $tresponse->getErrors()[0]->getErrorText());
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Transaction Failed: ' . $tresponse->getErrors()[0]->getErrorText()
+                    'message' => 'Transaction Failed: ' . $response->getMessages()->getMessage()[0]->getText()
                 ]);
             }
         } else {
-            log_message('error', 'Authorize.net returned null response.');
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'No response returned from Authorize.net.'
+                'message' => 'No response returned'
             ]);
         }
     }    

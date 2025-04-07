@@ -74,7 +74,7 @@ $routes->get('/quotations', 'User\QuotationsController::index');
 $routes->get('/quotations/getData', 'User\QuotationsController::getData');
 $routes->get('/quotations/quotationDetails', 'User\QuotationsController::quotationDetails');
 $routes->post('/quotations/pay', 'User\QuotationsController::pay');
-$routes->delete('quotations/delete/(:num)', 'User\QuotationsController::deleteQuotation/$1');
+$routes->delete('/quotations/delete/(:num)', 'User\QuotationsController::deleteQuotation/$1');
 /*User*/
 
 $routes->get('/', 'HomeController::index');

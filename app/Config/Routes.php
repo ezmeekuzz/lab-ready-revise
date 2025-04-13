@@ -25,6 +25,7 @@ $routes->delete('/quotationmasterlist/delete/(:num)', 'Admin\QuotationMasterlist
 $routes->post('/quotationmasterlist/updateStatus/(:num)', 'Admin\QuotationMasterlistController::updateStatus/$1');
 $routes->post('/quotationmasterlist/updateShipment/(:num)', 'Admin\QuotationMasterlistController::updateShipment/$1');
 $routes->get('/quotationmasterlist/getShipment/(:num)', 'Admin\QuotationMasterlistController::getShipment/$1');
+$routes->post('/quotationmasterlist/updateDeliveryDate/(:num)', 'Admin\QuotationMasterlistController::updateDeliveryDate/$1');
 $routes->get('/dashboard/getData', 'Admin\DashboardController::getData');
 $routes->get('/send-quotation', 'Admin\SendQuotationController::index');
 $routes->post('/sendquotation/insert', 'Admin\SendQuotationController::insert');

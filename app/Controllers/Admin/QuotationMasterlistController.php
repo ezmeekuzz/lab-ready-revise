@@ -118,7 +118,6 @@ class QuotationMasterlistController extends SessionController
             'shipment_link' => $data['shipment_link'],
             'reference' => $data['reference'],
             'fullname' => $data['fullname'],
-            'delivery_date' => $data['delivery_date'],
         ];
 
         $existingShipment = $shipmentsModel->where('quotation_id', $id)->first();
@@ -163,6 +162,51 @@ class QuotationMasterlistController extends SessionController
             return $this->response->setJSON(['status' => 'success', 'data' => $shipment]);
         } else {
             return $this->response->setJSON(['status' => 'success', 'data' => null]);
+        }
+    }
+    public function updateDeliveryDate($id)
+    {
+        $shipmentsModel = new ShipmentsModel();
+        $quotationResponsesModel = new QuotationResponsesModel();
+        $quotationsModel = new QuotationsModel();
+
+        $data = $this->request->getPost();
+        $validation = \Config\Services::validation();
+
+        $validation->setRules([
+            'delivery_date' => 'required|valid_url',
+        ]);
+
+        if (!$validation->withRequest($this->request)->run()) {
+            return $this->response->setJSON(['status' => 'error', 'message' => $validation->getErrors()]);
+        }
+
+        $deliveryData = [
+            'delivery_date' => $data['delivery_date'],
+        ];
+
+        $quotationDetails = $quotationResponsesModel
+        ->join('quotations', 'quotations.quotation_id=quotation_responses.quotation_id', 'left')
+        ->find($id);
+
+        $update = $quotationResponsesModel->update($id, $deliveryData);
+        
+        $message = view('emails/quote-scheduled', $data);
+        if ($update) {
+            $email = \Config\Services::email();
+            $email->setTo($data['email']);
+            $email->setSubject('You\'re delivery schedule has been set');
+            $email->setMessage($message);
+            if ($email->send()) {
+                return $this->response->setJSON(['status' => 'success']);
+            } else {
+                $response = [
+                    'success' => false,
+                    'message' => 'Failed to send message!',
+                ];
+            }
+        } else {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Failed to update the shipment details']);
         }
     }
 }

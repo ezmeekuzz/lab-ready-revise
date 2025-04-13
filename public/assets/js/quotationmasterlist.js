@@ -52,23 +52,67 @@ $(document).ready(function () {
             {
                 "data": "payment_status",
                 "render": function (data, type, row) {
+                    let statusText = data;
                     let statusClass = '';
-                    if (data === 'Unpaid') {
+            
+                    if (row.delivery_date) {
+                        statusText = 'Delivery Scheduled';
+                        statusClass = 'badge badge-info';
+                    } else if (data === 'Unpaid') {
                         statusClass = 'badge badge-warning';
                     } else if (data === 'Paid') {
                         statusClass = 'badge badge-success';
                     }
-                    return `<span class="${statusClass}">${data}</span>`;
+            
+                    return `<span class="${statusClass}">${statusText}</span>`;
                 }
             },
             {
                 "data": null,
                 "render": function (data, type, row) {
-                    let buttons = `<a href="#" title="Paid" class="paid-btn" data-id="${row.quotation_response_id}" style="color: blue;"><i class="ti ti-money" style="font-size: 18px;"></i></a>`;
+                    let buttons = `
+                        <a href="#" 
+                        title="Mark as Paid" 
+                        class="paid-btn" 
+                        data-id="${row.quotation_response_id}" 
+                        style="color: blue;">
+                        <i class="ti ti-money" style="font-size: 18px;"></i>
+                        </a>`;
+
                     if (row.payment_status === 'Paid') {
-                        buttons += `<a href="#" title="Update Shipment Status" data-fullname = "${row.fullname}" data-reference = "${row.reference_number}" class="shipment-btn" data-email="${row.email}" data-id="${row.quotation_id}" style="color: green;"><i class="ti ti-truck" style="font-size: 18px;"></i></a>`;
+                        buttons += `
+                            <a href="#" 
+                            title="Update Shipment Status" 
+                            class="shipment-btn" 
+                            data-id="${row.quotation_id}" 
+                            data-fullname="${row.fullname}" 
+                            data-reference="${row.reference_number}" 
+                            data-email="${row.email}" 
+                            style="color: green;">
+                            <i class="ti ti-truck" style="font-size: 18px;"></i>
+                            </a>
+
+                            <a href="#" 
+                            title="Schedule Delivery" 
+                            class="schedule-delivery-btn" 
+                            data-id="${row.quotation_response_id}" 
+                            data-fullname="${row.fullname}" 
+                            data-reference="${row.reference_number}" 
+                            data-email="${row.email}" 
+                            style="color: blue;">
+                            <i class="ti ti-calendar" style="font-size: 18px;"></i>
+                            </a>`;
                     }
-                    buttons += `<a href="#" title="Delete" class="delete-btn" data-id="${row.quotation_response_id}" style="color: red;"><i class="ti ti-trash" style="font-size: 18px;"></i></a>`;
+
+                    buttons += `
+                        <a href="#" 
+                        title="Delete Quotation" 
+                        class="delete-btn" 
+                        data-id="${row.quotation_response_id}" 
+                        style="color: red;">
+                        <i class="ti ti-trash" style="font-size: 18px;"></i>
+                        </a>`;
+
                     return buttons;
                 }
             }
@@ -198,10 +242,6 @@ $(document).ready(function () {
                                 <label for="shipment_link">Shipment Link</label>
                                 <input type="text" id="shipment_link" class="form-control" value="${data.shipment_link || ''}" placeholder="Shipment Link">
                             </div>
-                            <div class="form-group mt-3">
-                                <label for="delivery_date">Expected Delivery Date</label>
-                                <input type="date" id="delivery_date" class="form-control" value="${data.delivery_date || ''}">
-                            </div>
                         `,
                         showCancelButton: true,
                         confirmButtonText: 'Update',
@@ -217,7 +257,6 @@ $(document).ready(function () {
                                         fullname: document.getElementById('fullname').value,
                                         reference: document.getElementById('reference').value,
                                         shipment_link: document.getElementById('shipment_link').value,
-                                        delivery_date: document.getElementById('delivery_date').value,
                                         email: document.getElementById('email').value
                                     },
                                     success: function (response) {
@@ -268,4 +307,61 @@ $(document).ready(function () {
             }
         });
     });  
+
+    $(document).on('click', '.schedule-delivery-btn', function () {
+        const id = $(this).data('id');
+        let email = $(this).data('email');
+        let fullname = $(this).data('fullname');
+        let reference = $(this).data('reference');
+    
+        Swal.fire({
+            title: 'Schedule Delivery',
+            html: `
+                <input type="hidden" id="quotation_id" value="${id}">
+                <div class="form-group text-start mt-2">
+                    <label for="delivery_date">Delivery Date</label>
+                    <input type="date" id="delivery_date" class="form-control">
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Submit',
+            cancelButtonText: 'Cancel',
+            focusConfirm: false,
+            preConfirm: () => {
+                const deliveryDate = document.getElementById('delivery_date').value;
+    
+                if (!deliveryDate) {
+                    Swal.showValidationMessage('Please select a delivery date');
+                    return false;
+                }
+    
+                Swal.showLoading();
+    
+                return $.ajax({
+                    url: '/quotationmasterlist/updateDeliveryDate/' + id,
+                    method: 'POST',
+                    data: {
+                        quotation_id: id,
+                        email: email,
+                        fullname: fullname,
+                        reference: reference,
+                        delivery_date: deliveryDate
+                    }
+                }).then(response => {
+                    if (response.status === 'success') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Scheduled!',
+                            text: 'Delivery date has been scheduled.',
+                        });
+                        table.row($(`tr[data-id="${id}"]`)).draw(false);
+                    } else {
+                        throw new Error(response.message || 'Update failed.');
+                    }
+                }).catch(error => {
+                    Swal.showValidationMessage(`Request failed: ${error.message}`);
+                });
+            }
+        });
+    });    
 });

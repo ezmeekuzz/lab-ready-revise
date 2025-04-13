@@ -13,7 +13,7 @@ class QuotationResponsesModel extends Model
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
-        'quotation_id', 'price', 'invoice_file_location', 'invoice_file_name', 'address', 'city', 'state', 'zipcode', 'phonenumber', 'response_date', 'payment_status'
+        'quotation_id', 'price', 'invoice_file_location', 'invoice_file_name', 'address', 'city', 'state', 'zipcode', 'phonenumber', 'response_date', 'delivery_date', 'payment_status'
     ];
 
     protected bool $allowEmptyInserts = false;

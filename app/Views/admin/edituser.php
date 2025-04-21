@@ -30,7 +30,18 @@
                     <div class="card card-statistics">
                         <div class="card-header">
                             <div class="card-heading">
-                                <h4 class="card-title"><i class="ti ti-user"></i> Users</h4>
+                                <h4 class="card-title float-left"><i class="ti ti-user"></i> Users</h4>
+                                <div class="float-right">
+                                    <div class="form-group">
+                                        <div class="checkbox checbox-switch switch-success">
+                                            <label>
+                                                <input type="checkbox" value="1" name="po_allow" <?= $userDetails['po_allow'] ? 'checked' : '' ?> />
+                                                <span></span>
+                                                Allow Purchase Order
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="card-body">

@@ -67,6 +67,7 @@ class QuotationsController extends SessionController
         $quotationResponsesModel = new QuotationResponsesModel();
         $quotationResponseDetails = $quotationResponsesModel
         ->join('quotations', 'quotations.quotation_id=quotation_responses.quotation_id', 'left')
+        ->join('users', 'quotations.user_id=users.user_id', 'left')
         ->find($quotationReponseId);
         
         return $this->response->setJSON($quotationResponseDetails);

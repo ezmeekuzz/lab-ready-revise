@@ -10,7 +10,7 @@ $(document).ready(function() {
         let usertype = $('#usertype').val();
 
         // Perform client-side validation
-        if (fullname.trim() === '' || email.trim() === '' || password.trim() === '' || usertype.trim() === '') {
+        if (fullname.trim() === '' || email.trim() === '' || usertype.trim() === '') {
             // Show error using SweetAlert2
             Swal.fire({
                 icon: 'error',
@@ -20,11 +20,24 @@ $(document).ready(function() {
             return;
         }
 
+        // Get checkbox value (convert to 1 or 0)
+        let poAllow = $('input[name="po_allow"]').is(':checked') ? 1 : 0;
+
+        // Create form data object
+        let formData = {
+            user_id: $('#user_id').val(),
+            fullname: fullname,
+            email: email,
+            password: password,
+            usertype: usertype,
+            po_allow: poAllow
+        };
+
         // Send AJAX request
         $.ajax({
             type: 'POST',
             url: '/edituser/update',
-            data: $('#edituser').serialize(), // Serialize form data
+            data: formData,
             dataType: 'json',
             beforeSend: function() {
                 // Show loading effect
@@ -58,7 +71,7 @@ $(document).ready(function() {
                 Swal.fire({
                     icon: 'error',
                     title: 'Oops...',
-                    text: 'An error occurred while logging in. Please try again later.',
+                    text: 'An error occurred while updating user. Please try again later.',
                 });
                 console.error(xhr.responseText);
             }

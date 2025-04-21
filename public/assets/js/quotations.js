@@ -11,10 +11,11 @@ $(document).ready(function () {
             success: function (response) {
                 // Access specific properties from the response object
                 let quotationDate = moment(response.created_at).format('MMMM DD, YYYY');
-                let invoiceFile = response.invoice_file_location; // Assuming you have a PDF URL property
+                let invoiceFile = response.invoice_file_location;
                 let productName = response.quotation_name;
                 let productPrice = response.price;
                 let shipmentLink = response.shipment_link;
+                let poAllow = response.po_allow; // Get the PO allow status
 
                 // Format the content as HTML
                 let htmlContent = '<div class="book-layout">';
@@ -29,7 +30,11 @@ $(document).ready(function () {
                 if (response.payment_status === 'Unpaid') {
                     htmlContent += '<div class="row">';
                     htmlContent += '<div class="mb-3 mt-3 col-lg-12">';
-                    htmlContent += '<div id="paypalButton" class="form-group"></div>';
+                    
+                    // Only show PayPal button if PO is allowed
+                    if (poAllow == 1) {
+                        htmlContent += '<div id="paypalButton" class="form-group"></div>';
+                    }
                     
                     // Credit Card Button
                     htmlContent += '<button type="button" class="btn btn-info p-3 w-100 mb-2" id="chargeCreditCard">';
@@ -38,7 +43,7 @@ $(document).ready(function () {
                     
                     // eCheck Button
                     htmlContent += '<button type="button" class="btn btn-success p-3 w-100" id="chargeECheck">';
-                    htmlContent += '<img src="https://cdn-icons-png.flaticon.com/512/4002/4002020.png" class="w-20" /> eCheck Payment';
+                    htmlContent += '<img src="https://cdn-icons-png.flaticon.com/512/4002/4002020.png" class="w-20" /> ACH Payment';
                     htmlContent += '</button>';
                     
                     htmlContent += '</div>';
@@ -78,73 +83,72 @@ $(document).ready(function () {
                 // Show the modal
                 $("#quotationDetails").modal("show");
 
-                // Render PayPal button after content is loaded
-                paypal.Buttons({
-                    createOrder: (data, actions) => {
-                        if (quotationReponseId !== '' && productAmount !== '') {
-                            return actions.order.create({
-                                purchase_units: [{
-                                    amount: {
-                                        value: productAmount,
-                                        currency_code: 'USD'
+                // Render PayPal button only if PO is allowed
+                if (poAllow == 1) {
+                    paypal.Buttons({
+                        createOrder: (data, actions) => {
+                            if (quotationReponseId !== '' && productAmount !== '') {
+                                return actions.order.create({
+                                    purchase_units: [{
+                                        amount: {
+                                            value: productAmount,
+                                            currency_code: 'USD'
+                                        }
+                                    }]
+                                });
+                            } else {
+                                Swal.fire({
+                                    title: 'Warning!',
+                                    text: 'Please fill up all of the required form!',
+                                    icon: 'warning',
+                                });
+                            }
+                        },
+                        onApprove: (data, actions) => {
+                            return actions.order.capture().then(function (orderData) {
+                                const formData = new FormData();
+                                formData.append('quotationId', quotationId);
+                                formData.append('quotationReponseId', quotationReponseId);
+                    
+                                $.ajax({
+                                    type: "POST",
+                                    url: '/quotations/pay',
+                                    processData: false,
+                                    contentType: false,
+                                    data: formData,
+                                    success: function (data) {
+                                        if (data.success) {
+                                            Swal.fire({
+                                                title: 'Success!',
+                                                text: data.message,
+                                                icon: 'success',
+                                                willClose: () => {
+                                                    window.location.href = "/quotations";
+                                                }
+                                            });
+                                        } else {
+                                            Swal.fire({
+                                                title: 'Failed!',
+                                                text: data.message,
+                                                icon: 'error',
+                                                willClose: () => {
+                                                    window.location.href = "/quotations";
+                                                }
+                                            });
+                                        }
                                     }
-                                }]
+                                });
                             });
-                        } else {
+                        },
+                        onCancel: function (data) {
                             Swal.fire({
                                 title: 'Warning!',
-                                text: 'Please fill up all of the required form!',
+                                text: 'You cancelled your payment!',
                                 icon: 'warning',
                             });
                         }
-                    },
-                    onApprove: (data, actions) => {
-                        // Capture the order directly without asking for shipping details
-                        return actions.order.capture().then(function (orderData) {
-                            // Create FormData with only quotation ID (no shipping details)
-                            const formData = new FormData();
-                            formData.append('quotationId', quotationId);
-                            formData.append('quotationReponseId', quotationReponseId);
-                
-                            // Send the payment capture details via AJAX
-                            $.ajax({
-                                type: "POST",
-                                url: '/quotations/pay',
-                                processData: false,
-                                contentType: false,
-                                data: formData,
-                                success: function (data) {
-                                    if (data.success) {
-                                        Swal.fire({
-                                            title: 'Success!',
-                                            text: data.message,
-                                            icon: 'success',
-                                            willClose: () => {
-                                                window.location.href = "/quotations";
-                                            }
-                                        });
-                                    } else {
-                                        Swal.fire({
-                                            title: 'Failed!',
-                                            text: data.message,
-                                            icon: 'error',
-                                            willClose: () => {
-                                                window.location.href = "/quotations";
-                                            }
-                                        });
-                                    }
-                                }
-                            });
-                        });
-                    },
-                    onCancel: function (data) {
-                        Swal.fire({
-                            title: 'Warning!',
-                            text: 'You cancelled your payment!',
-                            icon: 'warning',
-                        });
-                    }
-                }).render('#paypalButton');                
+                    }).render('#paypalButton');
+                }
                 
                 // Add event listener for the "chargeCreditCard" button
                 $(document).on('click', '#chargeCreditCard', function () {
@@ -263,7 +267,7 @@ $(document).ready(function () {
                         }
                     });
                 });                
-                // Add event listener for the "chargeCreditCard" button
+                // Add event listener for the "chargeECheck" button
                 $(document).on('click', '#chargeECheck', function () {
                     // Step 1: Shipping Address
                     Swal.fire({
@@ -378,7 +382,7 @@ $(document).ready(function () {
     function fetchData(search = '', year = '', month = '') {
         $.ajax({
             type: "GET",
-            url: "/quotations/getData", // Make sure the backend handles year and month filters
+            url: "/quotations/getData",
             data: { 
                 search: search,
                 year: year,
@@ -387,9 +391,9 @@ $(document).ready(function () {
             success: function (response) {
                 $("#card-columns").empty();
                 if(response.length === 0) {
-                    $("#noQuotationsMessage").show(); // Show the message if no quotations
+                    $("#noQuotationsMessage").show();
                 } else {
-                    $("#noQuotationsMessage").hide(); // Hide the message if there are quotations
+                    $("#noQuotationsMessage").hide();
                     response.forEach(function (item) {
                         var cardHTML = `
                             <div class="col-xl-3 col-sm-6">
@@ -433,26 +437,25 @@ $(document).ready(function () {
     
     // Function to trigger fetch with filters
     function applyFilters() {
-        var search = $('#searchBox').val(); // Get the search query from the search box
-        var year = $('#yearFilter').val();  // Get the selected year from the year dropdown
-        var month = $('#monthFilter').val(); // Get the selected month from the month dropdown
+        var search = $('#searchBox').val();
+        var year = $('#yearFilter').val();
+        var month = $('#monthFilter').val();
     
-        // Fetch data with the search, year, and month filters
         fetchData(search, year, month);
     }
     
     // Event listeners for filter change
     $('#yearFilter').on('change', function() {
-        applyFilters(); // Fetch data when the year filter is changed
+        applyFilters();
     });
     
     $('#monthFilter').on('change', function() {
-        applyFilters(); // Fetch data when the month filter is changed
+        applyFilters();
     });
     
     // Search box keyup event listener to trigger search
     $('#searchBox').on('keyup', function() {
-        applyFilters(); // Fetch data as the user types in the search box
+        applyFilters();
     });
     
     // Initial fetch without filters
@@ -485,7 +488,6 @@ $(document).ready(function () {
                         if (response.status === 'success') {
                             fetchData();
                         } else {
-                            // Handle unsuccessful deletion
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Oops...',
@@ -494,7 +496,6 @@ $(document).ready(function () {
                         }
                     },
                     error: function () {
-                        // Handle AJAX request error
                         Swal.fire({
                             icon: 'error',
                             title: 'Oops...',

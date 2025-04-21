@@ -1,8 +1,8 @@
 document.getElementById("addQuotationBtn").addEventListener("click", function () {
     Swal.fire({
-        title: "Enter Quotation Name",
+        title: "Quote Name",
         input: "text",
-        inputPlaceholder: "Quotation Name",
+        inputPlaceholder: "Use a name that is relevant so you can find it later",
         showCancelButton: true,
         confirmButtonText: "OK",
         cancelButtonText: "Cancel",

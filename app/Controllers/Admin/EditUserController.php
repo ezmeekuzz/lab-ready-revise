@@ -19,6 +19,7 @@ class EditUserController extends SessionController
         ];
         return view('admin/edituser', $data);
     }
+
     public function update()
     {
         $usersModel = new UsersModel();
@@ -27,18 +28,21 @@ class EditUserController extends SessionController
         $email = $this->request->getPost('email');
         $password = $this->request->getPost('password');
         $usertype = $this->request->getPost('usertype');
+        $poAllow = $this->request->getPost('po_allow') ? 1 : 0; // Get checkbox value (1 if checked, 0 if not)
+        
         $data = [
             'fullname' => $fullname,
             'email' => $email,
-            'usertype' => $usertype // Assuming usertype should not be updated here
+            'usertype' => $usertype,
+            'po_allow' => $poAllow
         ];
-    
+
         // Check if password is provided and update password fields accordingly
         if (!empty($password)) {
             $data['password'] = $password;
             $data['encryptedpass'] = password_hash($password, PASSWORD_BCRYPT);
         }
-    
+
         // Check if the provided username is already in use
         $userList = $usersModel->where('email', $email)->where('user_id !=', $userId)->first();
         if ($userList) {
@@ -49,7 +53,7 @@ class EditUserController extends SessionController
         } else {
             // Update the user data
             $updated = $usersModel->update($userId, $data);
-    
+
             if ($updated) {
                 $response = [
                     'success' => true,
@@ -62,7 +66,7 @@ class EditUserController extends SessionController
                 ];
             }
         }
-    
+
         return $this->response->setJSON($response);
     }    
 }

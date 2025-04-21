@@ -2,13 +2,19 @@ document.addEventListener("DOMContentLoaded", function () {
     let uploadArea = document.getElementById("uploadArea");
     let fileInput = document.getElementById("fileInput");
     let validExtensions = [".step", ".iges", ".igs", ".stl", ".pdf", ".STEP", ".IGES", ".IGS", ".STL", ".PDF"];
+    let dropFilesLabel = document.getElementById("dropFilesLabel");
     
     let table = $('#cadItems').DataTable({
         "processing": true,
         "serverSide": true,
         "ajax": {
             "url": "/processquotation/getData",
-            "type": "GET"
+            "type": "GET",
+            "dataSrc": function (json) {
+                // Update label based on whether we have files
+                updateDropFilesLabel(json.data && json.data.length > 0);
+                return json.data;
+            }
         },
         "columns": [
             {
@@ -54,8 +60,16 @@ document.addEventListener("DOMContentLoaded", function () {
         
                 initializeStlViewer(container[0], stlLocation);
             });
+            
+            // Initial label update
+            table.ajax.reload(null, false);
         }
     });
+
+    // Function to update the drop files label
+    function updateDropFilesLabel(hasFiles) {
+        dropFilesLabel.textContent = hasFiles ? 'Drop Any Missing Files Here' : 'Drop Your Files';
+    }
 
     $(document).on("change", ".file-upload", function () {
         let fileInput = $(this);

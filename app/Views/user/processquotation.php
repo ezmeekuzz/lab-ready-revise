@@ -22,12 +22,12 @@
                 <div class="col-lg-10">
                     <div class="card shadow-sm border-0">
                         <div class="card-body text-center py-4">
-                            <h5 class="text-muted">Drop Your Files</h5>
+                            <h5 class="text-muted" id="dropFilesLabel">Drop Your Files</h5>
                             <form id="requestquotation">
                                 <div class="form-group">
                                     <div class="upload-area" id="uploadArea">
                                         <i class="fa fa-upload fa-2x text-muted"></i>
-                                        <p class="text-muted">Drag & Drop CAD Files (<b>STEP, IGES, STL Only</b>)</p>
+                                        <p class="text-muted">Drag & Drop All Files (<b>STEP, IGES, STL and PDF Only</b>)</p>
                                         <button type="button" id="fileSelectBtn">Select Files</button>
                                         <input type="file" id="fileInput" name="files" multiple hidden accept=".step,.iges,.igs,.pdf,.STEP,.IGES,.IGS,.PDF">
                                         <div id="fileList"></div>
@@ -56,7 +56,7 @@
                             </table>
                             <form id="submitQuotation">
                                 <div class="text-start mt-4" id="additional-info-section">
-                                    <label>Type Other Information (e.g., material, color, surface finish, etc.)</label>
+                                    <label>Enter Material and Surface Finish Details</label>
                                     <textarea class="form-control" rows="3" placeholder="Enter Here" style="min-height: 150px; resize: none;"></textarea>
                                 </div>
 

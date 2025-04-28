@@ -1,4 +1,15 @@
 <?=$this->include('user/header');?>
+<style>
+#cadItems td {
+    vertical-align: middle; /* Vertically center contents */
+    height: 200px; /* Or any size you want */
+    position: relative; /* Needed if you later want absolute children */
+}
+.stl-viewer-container {
+    width: 100%;
+    height: 100%;
+}
+</style>
 <div class="app-container">
     <?=$this->include('user/sidebar');?>
     <div class="app-main" id="main">
@@ -27,7 +38,7 @@
                                 <div class="form-group">
                                     <div class="upload-area" id="uploadArea">
                                         <i class="fa fa-upload fa-2x text-muted"></i>
-                                        <p class="text-muted">Drag & Drop All Files (<b>STEP, IGES, STL and PDF Only</b>)</p>
+                                        <p class="text-muted">Drag & Drop CAD models (<b>STEP or STL only</b>)</p>
                                         <button type="button" id="fileSelectBtn">Select Files</button>
                                         <input type="file" id="fileInput" name="files" multiple hidden accept=".step,.iges,.igs,.pdf,.STEP,.IGES,.IGS,.PDF">
                                         <div id="fileList"></div>
@@ -54,10 +65,27 @@
                                     </tr>
                                 </thead>
                             </table>
-                            <form id="submitQuotation">
-                                <div class="text-start mt-4" id="additional-info-section">
+                            <form id="submitQuotation" class="mt-5">
+                                <h5>Fill in the sections below in a casual manner as you might in a text or email</h5>
+
+                                <!-- Section 1: Material and Surface Finish Details -->
+                                <div class="text-start mt-4" id="material-finish-section">
                                     <label>Enter Material and Surface Finish Details</label>
-                                    <textarea class="form-control" rows="3" placeholder="Enter Here" style="min-height: 150px; resize: none;"></textarea>
+                                    <textarea class="form-control" rows="3" placeholder="Only use this section to provide information that is not on the prints (no need to provide information twice). 
+                            Examples: Laser marking needed? Assembly needed?" id="materialFinishTextarea" style="min-height: 150px; resize: none; width: 100%;"></textarea>
+                                </div>
+
+                                <!-- Section 2: Quantity(s) to Quote -->
+                                <div class="text-start mt-4" id="quantity-section">
+                                    <label>Enter Quantity(s) to Quote</label>
+                                    <textarea class="form-control" rows="3" placeholder="Example: Quote 5, 10, and 25 pieces. 
+                            If minimum order quantity applies, mention it here." id="quantityTextarea" style="min-height: 150px; resize: none; width: 100%;"></textarea>
+                                </div>
+
+                                <!-- Section 3: Other Relevant Details -->
+                                <div class="text-start mt-4" id="other-details-section">
+                                    <label>Enter any Other Details You Deem Relevant</label>
+                                    <textarea class="form-control" rows="3" id="otherDetailsTextarea" placeholder="Example: Delivery requirements, inspection requirements, certifications, special handling instructions, etc." style="min-height: 150px; resize: none; width: 100%;"></textarea>
                                 </div>
 
                                 <!-- Submit Button -->

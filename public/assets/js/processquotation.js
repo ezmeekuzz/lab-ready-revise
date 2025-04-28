@@ -3,7 +3,13 @@ document.addEventListener("DOMContentLoaded", function () {
     let fileInput = document.getElementById("fileInput");
     let validExtensions = [".step", ".iges", ".igs", ".stl", ".pdf", ".STEP", ".IGES", ".IGS", ".STL", ".PDF"];
     let dropFilesLabel = document.getElementById("dropFilesLabel");
-    
+    let fileSelectBtn = document.getElementById("fileSelectBtn");
+
+    if (fileSelectBtn) {
+        fileSelectBtn.addEventListener("click", function () {
+            fileInput.click(); // Triggers the hidden file input
+        });
+    }
     let table = $('#cadItems').DataTable({
         "processing": true,
         "serverSide": true,
@@ -22,7 +28,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 "render": function (data, type, row) {
                     if (data.toLowerCase().endsWith(".stl")) {
                         return `
-                            <div class="stl-viewer-container" id="stl-viewer-${row.item_id}" data-stl="/${data}" style="width: 150px; height: 150px;"></div>
+                            <div class="stl-wrapper" style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;">
+                                <div class="stl-viewer-container" id="stl-viewer-${row.item_id}" data-stl="/${data}" style="width: 100%; height: 100%;"></div>
+                            </div>
                         `;
                     } else {
                         return `<a href="${data}" target="_blank">${row.cad_file_name}</a>`;
@@ -30,16 +38,20 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             },
             { "data": "cad_file_name" },
-            { 
-                "data": null, 
+            {
+                "data": null,
                 "render": function (data, type, row) {
                     return `
-                        <div class="file-upload-wrapper">
-                            <label class="file-label" for="file-${row.item_id}">${row.print_file_name || "Choose File"}</label>
+                        <div class="file-upload-wrapper text-center">
+                            <label class="file-label btn btn-sm btn-outline-primary" for="file-${row.item_id}" style="cursor: pointer;">
+                                <i class="fa fa-upload"></i> ${row.print_file_name || "Upload Print File"}
+                            </label>
+                            <small class="d-block text-muted mt-1">Click to upload a print file</small>
                             <input type="file" class="file-upload form-control" id="file-${row.item_id}" data-id="${row.item_id}" style="display: none;" />
-                        </div>`;
+                        </div>
+                    `;
                 }
-            },
+            },            
             {
                 "data": null,
                 "render": function (data, type, row) {
@@ -229,22 +241,47 @@ document.addEventListener("DOMContentLoaded", function () {
         const fileInput = $(this);
         const file = fileInput[0].files[0];
         const itemId = fileInput.data("id");
-        
+    
         if (file) {
+            const fileExt = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+            
+            if (fileExt !== ".pdf") {
+                Swal.fire({
+                    icon: "error",
+                    title: "Invalid File Type",
+                    text: "Only PDF files are allowed for print file uploads."
+                });
+                fileInput.val(""); // Clear the input so the wrong file doesn't stay selected
+                return;
+            }
+    
             const formData = new FormData();
             formData.append("file", file);
             formData.append("item_id", itemId);
-            
-            Swal.fire({ title: "Uploading...", text: "Please wait.", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-            
+    
+            Swal.fire({ 
+                title: "Uploading...", 
+                text: "Please wait.", 
+                allowOutsideClick: false, 
+                didOpen: () => Swal.showLoading() 
+            });
+    
             fetch("/processquotation/uploadSingleFile", { method: "POST", body: formData })
                 .then(response => response.json())
                 .then(() => {
-                    Swal.fire({ icon: "success", title: "Upload Successful", text: "File uploaded successfully." });
-                    fileInput.siblings(".file-label").text(file.name);
+                    Swal.fire({ 
+                        icon: "success", 
+                        title: "Upload Successful", 
+                        text: "File uploaded successfully." 
+                    });
+                    fileInput.siblings(".file-label").html(`<i class="fa fa-upload"></i> ${file.name}`);
                 })
                 .catch(error => {
-                    Swal.fire({ icon: "error", title: "Upload Failed", text: "Something went wrong. Please try again." });
+                    Swal.fire({ 
+                        icon: "error", 
+                        title: "Upload Failed", 
+                        text: "Something went wrong. Please try again." 
+                    });
                     console.error("Upload Error:", error);
                 });
         }
@@ -298,7 +335,9 @@ $(document).ready(function () {
         e.preventDefault(); // Prevent default form submission
 
         let formData = {
-            additional_info: $("textarea").val().trim()
+            material_finish_details: $("#material-finish-section textarea").val().trim(),
+            quantity_to_quote: $("#quantity-section textarea").val().trim(),
+            other_relevant_details: $("#other-details-section textarea").val().trim()
         };
 
         // Show SweetAlert2 loading effect

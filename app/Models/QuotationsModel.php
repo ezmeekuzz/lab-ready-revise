@@ -13,7 +13,7 @@ class QuotationsModel extends Model
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
-        'user_id', 'quotation_name', 'reference_number', 'other_information', 'status', 'created_at', 'updated_at'
+        'user_id', 'quotation_name', 'reference_number', 'other_information', 'quantity_to_quote', 'relevant_details', 'status', 'created_at', 'updated_at'
     ];
 
     protected bool $allowEmptyInserts = false;

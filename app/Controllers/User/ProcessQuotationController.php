@@ -208,10 +208,12 @@ class ProcessQuotationController extends SessionController
         $request = service('request');
     
         // Validate input
-        $additionalInfo = trim($request->getPost('additional_info'));
+        $materialFinishDetails = trim($request->getPost('material_finish_details'));
+        $quantityToQuote = trim($request->getPost('quantity_to_quote'));
+        $otherRelevantDetails = trim($request->getPost('other_relevant_details'));
         $quotationId = session()->get('quotation_id');
     
-        if (empty($additionalInfo)) {
+        if (empty($materialFinishDetails)) {
             return $this->response->setJSON(['error' => 'Additional information cannot be empty.']);
         }
     
@@ -226,14 +228,16 @@ class ProcessQuotationController extends SessionController
     
         // Update quotation with additional info
         $data = [
-            'other_information' => $additionalInfo,
+            'other_information' => $materialFinishDetails,
+            'quantity_to_quote' => $quantityToQuote,
+            'relevant_details' => $otherRelevantDetails,
             'status' => 'Submitted'
         ];
     
         if ($quotationModel->update($quotationId, $data)) {
             // Send Email Notifications
-            $this->sendUserEmail($quotation, $additionalInfo);
-            $this->sendAdminEmail($quotation, $additionalInfo);
+            $this->sendUserEmail($quotation, $data);
+            $this->sendAdminEmail($quotation, $data);
     
             return $this->response->setJSON(['success' => 'Quotation submitted successfully!']);
         } else {

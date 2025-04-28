@@ -151,7 +151,7 @@ class RequestQuotationListController extends SessionController
             mkdir($tempDir, 0777, true);
         }
     
-        $zipFileName = "quotation_{$quotation_id}_files.zip";
+        $zipFileName = "{$quotation['reference_number']}.zip";
         $zipFilePath = realpath($tempDir) . DIRECTORY_SEPARATOR . $zipFileName;
     
         if (file_exists($zipFilePath)) {

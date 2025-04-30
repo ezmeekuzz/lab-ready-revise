@@ -78,8 +78,7 @@
                                 <!-- Section 2: Quantity(s) to Quote -->
                                 <div class="text-start mt-4" id="quantity-section">
                                     <label>Enter Quantity(s) to Quote</label>
-                                    <textarea class="form-control" rows="3" placeholder="Example: Quote 5, 10, and 25 pieces. 
-                            If minimum order quantity applies, mention it here." id="quantityTextarea" style="min-height: 150px; resize: none; width: 100%;"></textarea>
+                                    <textarea class="form-control" rows="3" placeholder="Example: Quote 5, 10, and 25 pieces." id="quantityTextarea" style="min-height: 150px; resize: none; width: 100%;"></textarea>
                                 </div>
 
                                 <!-- Section 3: Other Relevant Details -->

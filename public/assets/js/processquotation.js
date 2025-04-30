@@ -1,7 +1,8 @@
 document.addEventListener("DOMContentLoaded", function () {
     let uploadArea = document.getElementById("uploadArea");
     let fileInput = document.getElementById("fileInput");
-    let validExtensions = [".step", ".iges", ".igs", ".stl", ".pdf", ".STEP", ".IGES", ".IGS", ".STL", ".PDF"];
+    // Only allow STEP and STL files (case insensitive)
+    let validExtensions = [".step", ".stp", ".stl"];
     let dropFilesLabel = document.getElementById("dropFilesLabel");
     let fileSelectBtn = document.getElementById("fileSelectBtn");
 
@@ -10,6 +11,7 @@ document.addEventListener("DOMContentLoaded", function () {
             fileInput.click(); // Triggers the hidden file input
         });
     }
+
     let table = $('#cadItems').DataTable({
         "processing": true,
         "serverSide": true,
@@ -125,20 +127,29 @@ document.addEventListener("DOMContentLoaded", function () {
     function handleFiles(files) {
         let formData = new FormData();
         let validFiles = [];
+        let invalidFiles = [];
 
         files.forEach(file => {
-            let fileExt = file.name.slice(file.name.lastIndexOf("."));
+            let fileExt = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
             if (!validExtensions.includes(fileExt)) {
-                Swal.fire({
-                    icon: "error",
-                    title: "Invalid File Type",
-                    text: "Only STEP, IGES, STL, and PDF files are allowed."
-                });
+                invalidFiles.push(file.name);
             } else {
                 formData.append("files[]", file);
                 validFiles.push(file.name);
             }
         });
+
+        // Show error if any invalid files are found
+        if (invalidFiles.length > 0) {
+            Swal.fire({
+                icon: "error",
+                title: "Invalid File Type",
+                html: `The following files are not allowed: <strong>${invalidFiles.join(", ")}</strong>.<br><br>
+                       Only <strong>STEP (.step/.stp)</strong> and <strong>STL (.stl)</strong> files are supported.`,
+                confirmButtonColor: "#3085d6"
+            });
+            return; // Stop execution if invalid files exist
+        }
 
         // Only upload if there are valid files
         if (validFiles.length > 0) {
@@ -163,7 +174,6 @@ document.addEventListener("DOMContentLoaded", function () {
         .then(response => response.json())
         .then(data => {
             if (data.error) {
-                // If there's an error, show an error message
                 Swal.fire({
                     icon: "error",
                     title: "Upload Failed",
@@ -174,27 +184,22 @@ document.addEventListener("DOMContentLoaded", function () {
     
             let successMessage = "Uploaded: " + fileNames.join(", ");
     
-            // Handle conversion errors
             if (data.conversion_errors && data.conversion_errors.length > 0) {
                 successMessage += `\n\n⚠️ Some files failed to convert:\n${data.conversion_errors.join("\n")}`;
             }
     
-            // Show success message with details
             Swal.fire({
                 icon: "success",
                 title: "Upload Successful",
                 text: successMessage
             });
     
-            // Reload the DataTable without resetting pagination
             table.ajax.reload(null, false);
     
-            // Refresh STL Viewer
             setTimeout(() => {
                 $(".stl-viewer-container").each(function () {
                     let container = $(this);
                     let stlLocation = container.data("stl");
-    
                     initializeStlViewer(container[0], stlLocation);
                 });
             }, 1000);
@@ -210,30 +215,22 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     
     function initializeStlViewer(stlContainer, stlLocation) {
-        // Initialize StlViewer with the provided container and STL file location
         new StlViewer(stlContainer, {
-            // Provide the STL file location
             models: [{
                 filename: stlLocation
             }],
-            // Configure canvas settings
             canvasConfig: {
-                antialias: true, // Enable antialiasing for smoother edges
-                quality: 'high' // Set rendering quality to high
+                antialias: true,
+                quality: 'high'
             },
-            // Render the model as solid
             solid: true,
-            // Enable rotation of the model
             rotate: true,
-            // Automatically resize the viewer based on container size
             autoResize: true,
-            // Add light sources for better visibility
             lights: [
-                { dir: [1, 1, 1], color: [1, 1, 1] }, // White light from one direction
-                { dir: [-1, -1, -1], color: [0.5, 0.5, 0.5] } // Dim light from the opposite direction
+                { dir: [1, 1, 1], color: [1, 1, 1] },
+                { dir: [-1, -1, -1], color: [0.5, 0.5, 0.5] }
             ],
-            // Set initial pan position
-            pan: [0, 0] // Center the model initially
+            pan: [0, 0]
         });
     }
     
@@ -251,7 +248,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     title: "Invalid File Type",
                     text: "Only PDF files are allowed for print file uploads."
                 });
-                fileInput.val(""); // Clear the input so the wrong file doesn't stay selected
+                fileInput.val("");
                 return;
             }
     
@@ -286,9 +283,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
         }
     });
+    
     $(document).on("click", ".delete-item", function (e) {
         e.preventDefault();
-        
         let itemId = $(this).data("id");
     
         Swal.fire({
@@ -308,16 +305,15 @@ document.addEventListener("DOMContentLoaded", function () {
                     success: function (response) {
                         if (response.success) {
                             Swal.fire("Deleted!", "Your item has been deleted.", "success");
-                            table.ajax.reload(null, false); // Reload DataTable without resetting pagination
+                            table.ajax.reload(null, false);
 
                             setTimeout(() => {
                                 $(".stl-viewer-container").each(function () {
                                     let container = $(this);
                                     let stlLocation = container.data("stl");
-                    
                                     initializeStlViewer(container[0], stlLocation);
                                 });
-                            }, 1000); // Slight delay to ensure table reloads first
+                            }, 1000);
                         } else {
                             Swal.fire("Error!", response.message || "Unable to delete item.", "error");
                         }
@@ -330,9 +326,10 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });    
 });
+
 $(document).ready(function () {
     $("#submitQuotation").submit(function (e) {
-        e.preventDefault(); // Prevent default form submission
+        e.preventDefault();
 
         let formData = {
             material_finish_details: $("#material-finish-section textarea").val().trim(),
@@ -340,18 +337,17 @@ $(document).ready(function () {
             other_relevant_details: $("#other-details-section textarea").val().trim()
         };
 
-        // Show SweetAlert2 loading effect
         Swal.fire({
             title: "Submitting...",
             text: "Please wait while we process your request.",
             allowOutsideClick: false,
             didOpen: () => {
-                Swal.showLoading(); // Display loading spinner
+                Swal.showLoading();
             }
         });
 
         $.ajax({
-            url: "/processquotation/submitQuotation", // Adjust URL based on your route
+            url: "/processquotation/submitQuotation",
             type: "POST",
             data: formData,
             dataType: "json",
@@ -361,13 +357,11 @@ $(document).ready(function () {
                         icon: "success",
                         title: "Submitted!",
                         text: response.success,
-                        timer: 2000, // 2 seconds delay before reload
+                        timer: 2000,
                         showConfirmButton: false
                     }).then(() => {
                         window.location.href="/request-quotation-list";
                     });
-
-                    // Optionally, reset the form
                     $("#submitQuotation")[0].reset();
                 } else {
                     Swal.fire({

@@ -10,6 +10,7 @@ use App\Models\ItemsModel;
 use App\Models\UsersModel;
 use App\Models\UserReceiveQuotationResponsesModel;
 use ZipArchive;
+use TCPDF;
 
 class RequestQuotationListController extends SessionController
 {
@@ -143,8 +144,6 @@ class RequestQuotationListController extends SessionController
             return $this->response->setJSON(['success' => false, 'message' => 'No files found for this quotation.']);
         }
     
-        log_message('debug', 'Items retrieved: ' . print_r($items, true));
-    
         // Ensure temp directory exists
         $tempDir = FCPATH . 'temp/';
         if (!is_dir($tempDir)) {
@@ -158,6 +157,38 @@ class RequestQuotationListController extends SessionController
             unlink($zipFilePath);
         }
     
+        // Create PDF with quotation details
+        $pdf = new \TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+        $pdf->SetCreator('Lab Ready');
+        $pdf->SetAuthor('Charlie');
+        $pdf->SetTitle("Quotation {$quotation['reference_number']}");
+        $pdf->AddPage();
+    
+        // Set font and content
+        $pdf->SetFont('helvetica', '', 12);
+        $pdf->Cell(0, 10, "Quotation Details: {$quotation['reference_number']}", 0, 1, 'C');
+        $pdf->Ln(5);
+    
+        // Add each field on a new line
+        $fields = [
+            'Material/Finish Details' => $quotation['material_finish_details'] ?? 'N/A',
+            'Quantity to Quote' => $quotation['quantity_to_quote'] ?? 'N/A',
+            'Other Relevant Details' => $quotation['other_relevant_details'] ?? 'N/A'
+        ];
+    
+        foreach ($fields as $label => $value) {
+            $pdf->SetFont('helvetica', 'B', 12);
+            $pdf->Cell(60, 10, $label . ':', 0, 0);
+            $pdf->SetFont('helvetica', '', 12);
+            $pdf->MultiCell(0, 10, $value, 0, 1);
+            $pdf->Ln(2);
+        }
+    
+        $pdfFileName = "quotation_details_{$quotation['reference_number']}.pdf";
+        $pdfFilePath = $tempDir . $pdfFileName;
+        $pdf->Output($pdfFilePath, 'F');
+    
+        // Create ZIP archive
         $zip = new \ZipArchive();
         if ($zip->open($zipFilePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== TRUE) {
             return $this->response->setJSON(['success' => false, 'message' => "Failed to open ZIP file: $zipFilePath"]);
@@ -165,36 +196,28 @@ class RequestQuotationListController extends SessionController
     
         $fileAdded = false;
     
+        // Add PDF to ZIP first
+        if (file_exists($pdfFilePath)) {
+            $zip->addFile($pdfFilePath, "Quotation_Details.pdf");
+            $fileAdded = true;
+        }
+    
         foreach ($items as $item) {
-            // Get file paths directly (no JSON decoding needed)
-            $cadFile = $item['cad_file_location'] ?? '';
-            $printFile = $item['print_file_location'] ?? '';
-    
-            log_message('debug', "Processing item ID: " . $item['item_id']);
-            log_message('debug', "CAD file: " . $cadFile);
-            log_message('debug', "Print file: " . $printFile);
-    
             // Add CAD file if exists
-            if (!empty($cadFile)) {
-                $filePath = FCPATH . $cadFile;
+            if (!empty($item['cad_file_location'])) {
+                $filePath = FCPATH . $item['cad_file_location'];
                 if (file_exists($filePath)) {
                     $zip->addFile($filePath, "CAD_Files/" . $item['cad_file_name']);
                     $fileAdded = true;
-                    log_message('debug', "Added CAD file: " . $filePath);
-                } else {
-                    log_message('error', "CAD File not found: " . $filePath);
                 }
             }
     
             // Add Print file if exists
-            if (!empty($printFile)) {
-                $filePath = FCPATH . $printFile;
+            if (!empty($item['print_file_location'])) {
+                $filePath = FCPATH . $item['print_file_location'];
                 if (file_exists($filePath)) {
                     $zip->addFile($filePath, "Print_Files/" . $item['print_file_name']);
                     $fileAdded = true;
-                    log_message('debug', "Added Print file: " . $filePath);
-                } else {
-                    log_message('error', "Print File not found: " . $filePath);
                 }
             }
         }
@@ -205,6 +228,11 @@ class RequestQuotationListController extends SessionController
     
         if (!$zip->close()) {
             return $this->response->setJSON(['success' => false, 'message' => "Failed to finalize ZIP file: $zipFilePath"]);
+        }
+    
+        // Clean up PDF file after adding to ZIP
+        if (file_exists($pdfFilePath)) {
+            unlink($pdfFilePath);
         }
     
         return $this->response->download($zipFilePath, null)->setFileName($zipFileName);

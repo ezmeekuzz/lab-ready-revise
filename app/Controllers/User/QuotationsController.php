@@ -11,6 +11,7 @@ use App\Models\QuotationsModel;
 use App\Models\QuotationResponsesModel;
 use App\Models\UserReceiveQuotationResponsesModel;
 use App\Models\UsersModel;
+use App\Models\PORequestsModel;
 
 class QuotationsController extends SessionController
 {
@@ -72,59 +73,6 @@ class QuotationsController extends SessionController
         
         return $this->response->setJSON($quotationResponseDetails);
     }    
-    public function pay()
-    {
-        $quotationsModel = new QuotationsModel();
-        $usersModel = new UsersModel();
-        $quotationResponsesModel = new QuotationResponsesModel();
-
-        $quotationId = $this->request->getPost('quotationId');
-        $quotationReponseId = $this->request->getPost('quotationReponseId');
-
-        $updated = $quotationResponsesModel->update($quotationReponseId, ['payment_status' => 'Paid']);
-
-        $quotationResponseDetails = $quotationResponsesModel
-        ->join('quotations', 'quotations.quotation_id=quotation_responses.quotation_id', 'left')
-        ->find($quotationReponseId);
-
-        $quotationsModel->update($quotationId, ['status' => 'Done']);
-    
-        if ($updated) {
-            $userDetails = $usersModel->find(session()->get('user_user_id'));
-            $data = [
-                'userDetails' => $userDetails,
-                'quotationResponseDetails' => $quotationResponseDetails,
-                'phonenumber' => session()->get('user_phonenumber'),
-            ];
-            $message = view('emails/payment-success', $data);
-            // Email sending code
-            $pdfFilePath = FCPATH . $quotationResponseDetails['invoice_file_location'];
-            $this->adminEmailReceived($data);
-            $email = \Config\Services::email();
-            $email->setTo($userDetails['email']);
-            $email->setSubject('We\'ve got you\'re payment!');
-            $email->setMessage($message);
-            $email->attach($pdfFilePath, 'attachment', $quotationResponseDetails['invoice_file_name']);
-            if ($email->send()) {
-                $response = [
-                    'success' => true,
-                    'message' => 'Successfully Paid!',
-                ];
-            } else {
-                $response = [
-                    'success' => false,
-                    'message' => 'Failed to send message!',
-                ];
-            }
-        } else {
-            $response = [
-                'success' => false,
-                'message' => 'Payment Failed!',
-            ];
-        }
-    
-        return $this->response->setJSON($response);
-    }
     private function adminEmailReceived($data)
     {
         $message = "";
@@ -407,4 +355,62 @@ class QuotationsController extends SessionController
             ]);
         }
     }    
+    public function requestPOApproval()
+    {
+        $quotationId = $this->request->getPost('quotationId');
+        $quotationReponseId = $this->request->getPost('quotationReponseId');
+        $notes = $this->request->getPost('notes') ?? '';
+
+        // Get user and quotation details
+        $usersModel = new UsersModel();
+        $userDetails = $usersModel->find(session()->get('user_user_id'));
+        
+        $quotationResponsesModel = new QuotationResponsesModel();
+        $quotationResponseDetails = $quotationResponsesModel
+            ->join('quotations', 'quotations.quotation_id=quotation_responses.quotation_id', 'left')
+            ->find($quotationReponseId);
+
+        // Save the request
+        $poRequestsModel = new PORequestsModel();
+        $poRequestsModel->insert([
+            'user_id' => session()->get('user_user_id'),
+            'notes' => $notes
+        ]);
+
+        // Send email via queue
+        $this->sendPOApprovalRequestEmail($userDetails, $quotationResponseDetails, $notes);
+
+        return $this->response->setJSON([
+            'success' => true,
+            'message' => 'Your request for PO payment approval has been submitted. We will review your request and notify you.'
+        ]);
+    }
+
+    private function sendPOApprovalRequestEmail($userDetails, $quotationDetails, $notes)
+    {
+        try {
+            $email = \Config\Services::email();
+            
+            // Safely get quotation details with defaults
+            $emailData = [
+                'user' => $userDetails,
+                'quotation' => [
+                    'reference_number' => $quotationDetails['reference_number'] ?? 'N/A',
+                    'quotation_name' => $quotationDetails['quotation_name'] ?? 'Unnamed Quotation',
+                    'price' => $quotationDetails['price'] ?? 0
+                ],
+                'notes' => $notes,
+                'date' => date('F j, Y g:i a')
+            ];
+    
+            $email->setTo('rustomcodilan@gmail.com');
+            $email->setSubject('PO Payment Request: ' . $emailData['quotation']['reference_number']);
+            $email->setMessage(view('emails/po_approval_request', $emailData));
+            
+            return $email->send();
+        } catch (\Exception $e) {
+            log_message('error', 'Email Error: '.$e->getMessage());
+            return false;
+        }
+    }
 }

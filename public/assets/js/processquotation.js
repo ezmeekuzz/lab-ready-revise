@@ -31,7 +31,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (data.toLowerCase().endsWith(".stl")) {
                         return `
                             <div class="stl-wrapper" style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;">
-                                <div class="stl-viewer-container" id="stl-viewer-${row.item_id}" data-stl="/${data}" style="width: 100%; height: 100%;"></div>
+                                <div class="stl-viewer-container" id="stl-viewer-${row.item_id}" data-stl="/${data}" style="width: 80%; height: 100%;"></div>
                             </div>
                         `;
                     } else {
@@ -224,13 +224,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 quality: 'high'
             },
             solid: true,
-            rotate: true,
-            autoResize: true,
-            lights: [
-                { dir: [1, 1, 1], color: [1, 1, 1] },
-                { dir: [-1, -1, -1], color: [0.5, 0.5, 0.5] }
-            ],
-            pan: [0, 0]
         });
     }
     

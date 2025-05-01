@@ -58,10 +58,10 @@
                             <table id="cadItems" class="table table-bordered text-center">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>CAD Model</th>
-                                        <th>Model File Name</th>
-                                        <th>Print File</th>
-                                        <th></th>
+                                        <th style="width: 30%">CAD Model</th>
+                                        <th style="width: 30%">Model File Name</th>
+                                        <th style="width: 30%">Print File</th>
+                                        <th style="width: 10%"></th>
                                     </tr>
                                 </thead>
                             </table>
@@ -105,4 +105,5 @@
 </div>
 <?=$this->include('user/footer');?>
 <script src="<?=base_url();?>assets/stl_viewer/stl_viewer.min.js"></script>
+<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 <script src="<?=base_url();?>assets/js/processquotation.js"></script>

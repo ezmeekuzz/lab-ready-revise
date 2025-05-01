@@ -15,7 +15,12 @@ $(document).ready(function () {
                 let productName = response.quotation_name;
                 let productPrice = response.price;
                 let shipmentLink = response.shipment_link;
-                let poAllow = response.po_allow; // Get the PO allow status
+                let poAllow = response.po_allow;
+                let address = response.user_address || '';
+                let city = response.user_city || '';
+                let state = response.user_state || '';
+                let zipcode = response.user_zipcode || '';
+                let phonenumber = response.user_phonenumber || '';
 
                 // Format the content as HTML
                 let htmlContent = '<div class="book-layout">';
@@ -31,9 +36,15 @@ $(document).ready(function () {
                     htmlContent += '<div class="row">';
                     htmlContent += '<div class="mb-3 mt-3 col-lg-12">';
                     
-                    // Only show PayPal button if PO is allowed
+                    // PO Payment Button - shows different buttons based on approval status
                     if (poAllow == 1) {
-                        htmlContent += '<div id="paypalButton" class="form-group"></div>';
+                        htmlContent += '<button type="button" class="btn btn-warning p-3 w-100 mb-2" id="submitPO">';
+                        htmlContent += '<i class="fa fa-file-text"></i> Submit PO';
+                        htmlContent += '</button>';
+                    } else {
+                        htmlContent += '<button type="button" class="btn btn-secondary p-3 w-100 mb-2" id="requestPOApproval">';
+                        htmlContent += '<i class="fa fa-question-circle"></i> NOT Approved for PO Payment - Click to Request';
+                        htmlContent += '</button>';
                     }
                     
                     // Credit Card Button
@@ -55,22 +66,19 @@ $(document).ready(function () {
 
                 // Display the formatted content in the #displayDetails div
                 $("#displayDetails").html(htmlContent);
+                
+                // PDF Viewer
                 const pdfUrl = invoiceFile;
                 const loadingTask = pdfjsLib.getDocument(pdfUrl);
                 loadingTask.promise.then(function(pdf) {
-                    // Fetch the first page
                     pdf.getPage(1).then(function(page) {
                         const scale = 1.5;
                         const viewport = page.getViewport({ scale: scale });
-            
-                        // Prepare canvas using PDF page dimensions
                         const canvas = document.createElement('canvas');
                         const context = canvas.getContext('2d');
                         canvas.height = viewport.height;
                         canvas.width = viewport.width;
                         $("#pdfViewer").html(canvas);
-            
-                        // Render PDF page into canvas context
                         const renderContext = {
                             canvasContext: context,
                             viewport: viewport
@@ -78,79 +86,160 @@ $(document).ready(function () {
                         page.render(renderContext);
                     });
                 });
+                
                 $("#productName").html('<h3><i class="fa fa-flag"></i> ' + productName + '</h3>');
-
-                // Show the modal
                 $("#quotationDetails").modal("show");
 
-                // Render PayPal button only if PO is allowed
-                if (poAllow == 1) {
-                    paypal.Buttons({
-                        createOrder: (data, actions) => {
-                            if (quotationReponseId !== '' && productAmount !== '') {
-                                return actions.order.create({
-                                    purchase_units: [{
-                                        amount: {
-                                            value: productAmount,
-                                            currency_code: 'USD'
-                                        }
-                                    }]
-                                });
-                            } else {
-                                Swal.fire({
-                                    title: 'Warning!',
-                                    text: 'Please fill up all of the required form!',
-                                    icon: 'warning',
-                                });
+                // Event listener for PO submission button
+                $(document).on('click', '#submitPO', function() {
+                    Swal.fire({
+                        title: 'Submit Purchase Order',
+                        html: `
+                            <div class="text-left mb-3">
+                                <h5>Shipping Information</h5>
+                                <label>Address:</label><input type="text" id="address" name="address" value="${address}" class="form-control" required><br>
+                                <label>City:</label><input type="text" id="city" name="city" value="${city}" class="form-control" required><br>
+                                <label>State:</label><input type="text" id="state" name="state" value="${state}" class="form-control" required><br>
+                                <label>Zip Code:</label><input type="text" id="zipcode" name="zipcode" value="${zipcode}" class="form-control" required><br>
+                                <label>Phone Number:</label><input type="text" id="phonenumber" name="phonenumber" value="${phonenumber}" class="form-control" required><br>
+                            </div>
+                            <div class="text-left">
+                                <h5>PO Document</h5>
+                                <p>Please upload your Purchase Order document (PDF preferred)</p>
+                                <input type="file" id="poDocument" name="poDocument" class="form-control" accept=".pdf,.doc,.docx" required>
+                            </div>
+                        `,
+                        showCancelButton: true,
+                        confirmButtonText: 'Submit PO',
+                        preConfirm: () => {
+                            const address = Swal.getPopup().querySelector('#address').value.trim();
+                            const city = Swal.getPopup().querySelector('#city').value.trim();
+                            const state = Swal.getPopup().querySelector('#state').value.trim();
+                            const zipcode = Swal.getPopup().querySelector('#zipcode').value.trim();
+                            const phoneNumber = Swal.getPopup().querySelector('#phonenumber').value.trim();
+                            const poDocument = Swal.getPopup().querySelector('#poDocument').files[0];
+                            
+                            if (!address || !city || !state || !zipcode || !phoneNumber || !poDocument) {
+                                Swal.showValidationMessage('Please fill out all required fields and upload a PO document');
+                                return false;
                             }
-                        },
-                        onApprove: (data, actions) => {
-                            return actions.order.capture().then(function (orderData) {
-                                const formData = new FormData();
-                                formData.append('quotationId', quotationId);
-                                formData.append('quotationReponseId', quotationReponseId);
-                    
-                                $.ajax({
-                                    type: "POST",
-                                    url: '/quotations/pay',
-                                    processData: false,
-                                    contentType: false,
-                                    data: formData,
-                                    success: function (data) {
-                                        if (data.success) {
-                                            Swal.fire({
-                                                title: 'Success!',
-                                                text: data.message,
-                                                icon: 'success',
-                                                willClose: () => {
-                                                    window.location.href = "/quotations";
-                                                }
-                                            });
-                                        } else {
-                                            Swal.fire({
-                                                title: 'Failed!',
-                                                text: data.message,
-                                                icon: 'error',
-                                                willClose: () => {
-                                                    window.location.href = "/quotations";
-                                                }
-                                            });
-                                        }
-                                    }
-                                });
-                            });
-                        },
-                        onCancel: function (data) {
+                            
+                            return { address, city, state, zipcode, phoneNumber, poDocument };
+                        }
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            const formData = new FormData();
+                            formData.append('address', result.value.address);
+                            formData.append('city', result.value.city);
+                            formData.append('state', result.value.state);
+                            formData.append('zipcode', result.value.zipcode);
+                            formData.append('phoneNumber', result.value.phoneNumber);
+                            formData.append('poDocument', result.value.poDocument);
+                            formData.append('quotationId', quotationId);
+                            formData.append('quotationReponseId', quotationReponseId);
+                            
                             Swal.fire({
-                                title: 'Warning!',
-                                text: 'You cancelled your payment!',
-                                icon: 'warning',
+                                title: 'Processing PO Submission',
+                                html: 'Please wait while we submit your purchase order...',
+                                allowOutsideClick: false,
+                                didOpen: () => { Swal.showLoading(); }
+                            });
+                            
+                            $.ajax({
+                                type: "POST",
+                                url: "/quotations/submitPO",
+                                data: formData,
+                                processData: false,
+                                contentType: false,
+                                success: function(response) {
+                                    Swal.fire({
+                                        title: 'Success!',
+                                        text: response.message || 'Your PO has been submitted successfully.',
+                                        icon: 'success',
+                                        willClose: () => { window.location.href = "/quotations"; }
+                                    });
+                                },
+                                error: function(xhr) {
+                                    const errorMessage = xhr.responseJSON?.message || 'An error occurred while submitting your PO.';
+                                    Swal.fire({ title: 'Error!', text: errorMessage, icon: 'error' });
+                                }
                             });
                         }
-                    }).render('#paypalButton');
-                }
+                    });
+                });
                 
-                // Add event listener for the "chargeCreditCard" button
+                // Event listener for PO approval request button
+                $(document).on('click', '#requestPOApproval', function() {
+                    const quotationId = $(this).data('quotation-id');
+                    const quotationReponseId = $(this).data('id');
+                    
+                    Swal.fire({
+                        title: 'Request PO Payment Approval',
+                        html: `
+                            <div class="mb-3">
+                                <p>Please provide details about your PO payment request:</p>
+                                <textarea id="requestNotes" class="form-control" rows="4" 
+                                    placeholder="Example: Our company requires PO payments. Our accounting department will process payment upon approval. Purchase order number will be provided once approved."></textarea>
+                            </div>
+                            <div class="alert alert-info mt-2">
+                                <i class="fas fa-info-circle"></i> We typically respond to approval requests within 1-2 business days.
+                            </div>
+                        `,
+                        showCancelButton: true,
+                        confirmButtonText: 'Submit Request',
+                        cancelButtonText: 'Cancel',
+                        focusConfirm: false,
+                        preConfirm: () => {
+                            const notes = $('#requestNotes').val().trim();
+                            if (!notes) {
+                                Swal.showValidationMessage('Please provide some details about your request');
+                                return false;
+                            }
+                            return { notes };
+                        }
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            Swal.fire({
+                                title: 'Submitting Request...',
+                                allowOutsideClick: false,
+                                didOpen: () => Swal.showLoading()
+                            });
+                            
+                            $.ajax({
+                                type: "POST",
+                                url: "/quotations/requestPOApproval",
+                                data: {
+                                    quotationId: quotationId,
+                                    quotationReponseId: quotationReponseId,
+                                    notes: result.value.notes
+                                },
+                                success: function(response) {
+                                    Swal.fire({
+                                        title: 'Request Submitted!',
+                                        icon: 'success',
+                                        html: `
+                                            <div class="text-center">
+                                                <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+                                                <p>${response.message}</p>
+                                                <p class="small text-muted mt-2">You'll receive an email once your request is processed.</p>
+                                            </div>
+                                        `,
+                                        confirmButtonText: 'OK'
+                                    });
+                                },
+                                error: function(xhr) {
+                                    Swal.fire({
+                                        title: 'Error!',
+                                        text: xhr.responseJSON?.message || 'An error occurred while submitting your request.',
+                                        icon: 'error'
+                                    });
+                                }
+                            });
+                        }
+                    });
+                });
+
+                // Credit Card Payment Handler
                 $(document).on('click', '#chargeCreditCard', function () {
                     // Step 1: Show Shipping Address
                     Swal.fire({
@@ -176,13 +265,7 @@ $(document).ready(function () {
                                 return false;
                             }
                 
-                            return {
-                                address,
-                                city,
-                                state,
-                                zipcode,
-                                phoneNumber,
-                            };
+                            return { address, city, state, zipcode, phoneNumber };
                         }
                     }).then((result) => {
                         if (result.isConfirmed) {
@@ -207,11 +290,7 @@ $(document).ready(function () {
                                         return false;
                                     }
                 
-                                    return {
-                                        cardNumber,
-                                        expirationDate,
-                                        cvv,
-                                    };
+                                    return { cardNumber, expirationDate, cvv };
                                 }
                             }).then((paymentResult) => {
                                 if (paymentResult.isConfirmed) {
@@ -220,26 +299,24 @@ $(document).ready(function () {
                                     // Combine both shipping and payment data
                                     const formData = {
                                         ...shippingData,
-                                        ...paymentData
+                                        ...paymentData,
+                                        amount: productAmount,
+                                        quotationId: quotationId,
+                                        quotationReponseId: quotationReponseId
                                     };
                 
                                     // Send the data via AJAX
+                                    Swal.fire({
+                                        title: 'Processing Payment',
+                                        html: 'Please wait while we process your payment...',
+                                        allowOutsideClick: false,
+                                        didOpen: () => { Swal.showLoading(); }
+                                    });
+                
                                     $.ajax({
                                         type: 'POST',
                                         url: '/quotations/chargeCreditCard',
-                                        data: {
-                                            amount: $('#amount').val(),
-                                            cardNumber: formData.cardNumber,
-                                            expirationDate: formData.expirationDate,
-                                            cvv: formData.cvv,
-                                            address: formData.address,
-                                            city: formData.city,
-                                            state: formData.state,
-                                            zipcode: formData.zipcode,
-                                            phoneNumber: formData.phoneNumber,
-                                            quotationId: quotationId,
-                                            quotationReponseId: quotationReponseId,
-                                        },
+                                        data: formData,
                                         success: function (response) {
                                             const { success, message } = response;
                 
@@ -247,19 +324,12 @@ $(document).ready(function () {
                                                 title: success ? 'Payment Successful!' : 'Payment Failed!',
                                                 text: message,
                                                 icon: success ? 'success' : 'error',
-                                                willClose: () => {
-                                                    window.location.href = "/quotations";
-                                                }
+                                                willClose: () => { window.location.href = "/quotations"; }
                                             });
                                         },
                                         error: function (xhr) {
-                                            const errorMessage = xhr.responseJSON?.message || 'An error occurred during the payment process. Please try again later.';
-                                            
-                                            Swal.fire({
-                                                title: 'Payment Error!',
-                                                text: errorMessage,
-                                                icon: 'error',
-                                            });
+                                            const errorMessage = xhr.responseJSON?.message || 'An error occurred.';
+                                            Swal.fire({ title: 'Payment Error!', text: errorMessage, icon: 'error' });
                                         }
                                     });
                                 }
@@ -267,7 +337,8 @@ $(document).ready(function () {
                         }
                     });
                 });                
-                // Add event listener for the "chargeECheck" button
+                
+                // ACH Payment Handler
                 $(document).on('click', '#chargeECheck', function () {
                     // Step 1: Shipping Address
                     Swal.fire({
@@ -300,7 +371,7 @@ $(document).ready(function () {
                 
                             // Step 2: Payment Details
                             Swal.fire({
-                                title: 'eCheck Payment',
+                                title: 'ACH Payment',
                                 html: `
                                     <label>Amount:</label><input type="text" id="amount" name="amount" class="form-control" value="${productAmount}" readonly><br>
                                     <label>Bank Account Number:</label><input type="text" id="account_number" name="account_number" class="form-control" required><br>
@@ -336,9 +407,18 @@ $(document).ready(function () {
                                     const formData = {
                                         ...shippingData,
                                         ...paymentData,
-                                        amount: $('#amount').val(),
-                                        quotationId: quotationId
+                                        amount: productAmount,
+                                        quotationId: quotationId,
+                                        quotationReponseId: quotationReponseId
                                     };
+                
+                                    // Show loading state
+                                    Swal.fire({
+                                        title: 'Processing Payment',
+                                        html: 'Please wait while we process your payment...',
+                                        allowOutsideClick: false,
+                                        didOpen: () => { Swal.showLoading(); }
+                                    });
                 
                                     // Perform the AJAX request
                                     $.ajax({
@@ -352,19 +432,12 @@ $(document).ready(function () {
                                                 title: success ? 'Payment Successful!' : 'Payment Failed!',
                                                 text: message,
                                                 icon: success ? 'success' : 'error',
-                                                willClose: () => {
-                                                    window.location.href = "/quotations";
-                                                }
+                                                willClose: () => { window.location.href = "/quotations"; }
                                             });
                                         },
                                         error: function (xhr) {
-                                            const errorMessage = xhr.responseJSON?.message || 'An error occurred during the payment process. Please try again later.';
-                
-                                            Swal.fire({
-                                                title: 'Payment Error!',
-                                                text: errorMessage,
-                                                icon: 'error',
-                                            });
+                                            const errorMessage = xhr.responseJSON?.message || 'An error occurred.';
+                                            Swal.fire({ title: 'Payment Error!', text: errorMessage, icon: 'error' });
                                         }
                                     });
                                 }

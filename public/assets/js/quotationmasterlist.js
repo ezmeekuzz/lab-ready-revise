@@ -60,7 +60,7 @@ $(document).ready(function () {
                         statusClass = 'badge badge-info';
                     } else if (data === 'Unpaid') {
                         statusClass = 'badge badge-warning';
-                    } else if (data === 'Paid') {
+                    } else if (data === 'Paid' || data === 'PO Submitted') {
                         statusClass = 'badge badge-success';
                     }
             
@@ -79,30 +79,42 @@ $(document).ready(function () {
                         <i class="ti ti-money" style="font-size: 18px;"></i>
                         </a>`;
 
-                    if (row.payment_status === 'Paid') {
-                        buttons += `
-                            <a href="#" 
-                            title="Update Shipment Status" 
-                            class="shipment-btn" 
-                            data-id="${row.quotation_id}" 
-                            data-fullname="${row.fullname}" 
-                            data-reference="${row.reference_number}" 
-                            data-email="${row.email}" 
-                            style="color: green;">
-                            <i class="ti ti-truck" style="font-size: 18px;"></i>
-                            </a>
-
-                            <a href="#" 
-                            title="Schedule Delivery" 
-                            class="schedule-delivery-btn" 
-                            data-id="${row.quotation_response_id}" 
-                            data-fullname="${row.fullname}" 
-                            data-reference="${row.reference_number}" 
-                            data-email="${row.email}" 
-                            style="color: blue;">
-                            <i class="ti ti-calendar" style="font-size: 18px;"></i>
-                            </a>`;
-                    }
+                        if (row.payment_status === 'Paid' || row.payment_status === 'PO Submitted') {
+                            buttons += `
+                                <a href="#" 
+                                title="Update Shipment Status" 
+                                class="shipment-btn" 
+                                data-id="${row.quotation_id}" 
+                                data-fullname="${row.fullname}" 
+                                data-reference="${row.reference_number}" 
+                                data-email="${row.email}" 
+                                style="color: green;">
+                                <i class="ti ti-truck" style="font-size: 18px;"></i>
+                                </a>
+                        
+                                <a href="#" 
+                                title="Schedule Delivery" 
+                                class="schedule-delivery-btn" 
+                                data-id="${row.quotation_response_id}" 
+                                data-fullname="${row.fullname}" 
+                                data-reference="${row.reference_number}" 
+                                data-email="${row.email}" 
+                                style="color: blue;">
+                                <i class="ti ti-calendar" style="font-size: 18px;"></i>
+                                </a>
+                        
+                                <a href="#" 
+                                title="Send Invoice" 
+                                class="send-invoice-btn" 
+                                data-id="${row.quotation_response_id}" 
+                                data-quotation-id="${row.quotation_id}"
+                                data-reference="${row.reference_number}" 
+                                data-email="${row.email}"
+                                data-fullname="${row.fullname}"
+                                style="color: #6f42c1;">
+                                <i class="fa fa-file-text" style="font-size: 18px;"></i>
+                                </a>`;
+                        }
 
                     buttons += `
                         <a href="#" 
@@ -171,6 +183,89 @@ $(document).ready(function () {
                             icon: 'error',
                             title: 'Oops...',
                             text: 'Something went wrong with the request!',
+                        });
+                    }
+                });
+            }
+        });
+    });
+
+    $(document).on('click', '.send-invoice-btn', function(e) {
+        e.preventDefault();
+        
+        const quotationResponseId = $(this).data('id');
+        const quotationId = $(this).data('quotation-id');
+        const referenceNumber = $(this).data('reference');
+        const customerEmail = $(this).data('email');
+        const customerName = $(this).data('fullname');
+        const invoiceNumber = `${referenceNumber}-INV`;
+        
+        Swal.fire({
+            title: 'Send Invoice to Customer',
+            html: `
+                <div class="mb-3">
+                    <p><strong>Invoice Number:</strong> ${invoiceNumber}</p>
+                    <p><strong>Customer:</strong> ${customerName} (${customerEmail})</p>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Invoice File (PDF)</label>
+                    <input type="file" id="invoiceFile" class="form-control" accept=".pdf" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Additional Message (Optional)</label>
+                    <textarea id="invoiceMessage" class="form-control" rows="3" placeholder="Add any additional notes for the customer..."></textarea>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Send Invoice',
+            preConfirm: () => {
+                const fileInput = document.getElementById('invoiceFile');
+                if (!fileInput.files.length) {
+                    Swal.showValidationMessage('Please select an invoice PDF file');
+                    return false;
+                }
+                return {
+                    file: fileInput.files[0],
+                    message: document.getElementById('invoiceMessage').value.trim()
+                };
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const formData = new FormData();
+                formData.append('invoiceFile', result.value.file);
+                formData.append('quotationResponseId', quotationResponseId);
+                formData.append('quotationId', quotationId);
+                formData.append('referenceNumber', referenceNumber);
+                formData.append('customerEmail', customerEmail);
+                formData.append('customerName', customerName);
+                formData.append('invoiceNumber', invoiceNumber);
+                formData.append('message', result.value.message);
+                
+                Swal.fire({
+                    title: 'Sending Invoice',
+                    html: 'Please wait while we send the invoice...',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+                
+                $.ajax({
+                    url: '/quotationmasterlist/sendInvoice',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        Swal.fire({
+                            title: 'Invoice Sent!',
+                            text: `Invoice ${invoiceNumber} has been sent to ${customerEmail}`,
+                            icon: 'success'
+                        });
+                    },
+                    error: function(xhr) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: xhr.responseJSON?.message || 'Failed to send invoice',
+                            icon: 'error'
                         });
                     }
                 });

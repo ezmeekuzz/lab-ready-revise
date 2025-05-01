@@ -98,13 +98,15 @@
     </div>
 </div>
 <?=$this->include('user/footer');?>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
 <script>
     let address = "<?=session()->get('user_address');?>";
     let state = "<?=session()->get('user_state');?>";
     let city = "<?=session()->get('user_city');?>";
     let zipcode = "<?=session()->get('user_zipcode');?>";
     let phonenumber = "<?=session()->get('user_phonenumber');?>";
+    let result = address + ', ' + state + ', ' + city + ', ' + zipcode + ', ' + phonenumber;
+    console.log(result);
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
 <!-- Filter functionality script -->
 <script src="<?=base_url();?>assets/js/quotations.js"></script>

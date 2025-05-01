@@ -209,4 +209,79 @@ class QuotationMasterlistController extends SessionController
             return $this->response->setJSON(['status' => 'error', 'message' => 'Failed to update the shipment details']);
         }
     }
+    public function sendInvoice()
+    {
+        helper(['form', 'filesystem']);
+    
+        // Validate the request
+        if (!$this->request->is('post')) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Invalid request method'
+            ]);
+        }
+    
+        // Get form data
+        $invoiceFile = $this->request->getFile('invoiceFile');
+        $quotationResponseId = $this->request->getPost('quotationResponseId');
+        $quotationId = $this->request->getPost('quotationId');
+        $referenceNumber = $this->request->getPost('referenceNumber');
+        $customerEmail = $this->request->getPost('customerEmail');
+        $customerName = $this->request->getPost('customerName');
+        $invoiceNumber = $this->request->getPost('invoiceNumber');
+        $message = $this->request->getPost('message');
+    
+        // Validate file
+        if (!$invoiceFile->isValid()) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Invalid invoice file'
+            ]);
+        }
+    
+        if ($invoiceFile->getMimeType() != 'application/pdf') {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Only PDF files are allowed'
+            ]);
+        }
+    
+        // Create upload directory if it doesn't exist
+        $uploadPath = FCPATH . 'uploads/invoices/';
+        if (!is_dir($uploadPath)) {
+            mkdir($uploadPath, 0755, true);
+        }
+    
+        // Generate filename and move file
+        $newName = $invoiceFile->getRandomName();
+        $invoiceFile->move($uploadPath, $newName);
+        $invoicePath = 'uploads/invoices/' . $newName;
+    
+        // Get quotation details
+        $quotationResponsesModel = new QuotationResponsesModel();
+        $quotationResponse = $quotationResponsesModel->find($quotationResponseId);
+    
+        // Send email to customer
+        $email = \Config\Services::email();
+        $email->setTo($customerEmail);
+        $email->setSubject("Invoice {$invoiceNumber} for Your Order");
+        
+        $emailData = [
+            'customerName' => $customerName,
+            'referenceNumber' => $referenceNumber,
+            'invoiceNumber' => $invoiceNumber,
+            'message' => $message,
+            'invoiceLink' => base_url("quotations/viewInvoice/{$quotationResponseId}"),
+            'date' => date('F j, Y')
+        ];
+        
+        $email->setMessage(view('emails/customer_invoice', $emailData));
+        $email->attach(FCPATH . $invoicePath);
+        $email->send();
+    
+        return $this->response->setJSON([
+            'success' => true,
+            'message' => 'Invoice has been sent successfully'
+        ]);
+    }
 }

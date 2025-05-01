@@ -16,11 +16,11 @@ $(document).ready(function () {
                 let productPrice = response.price;
                 let shipmentLink = response.shipment_link;
                 let poAllow = response.po_allow;
-                let address = response.user_address || '';
-                let city = response.user_city || '';
-                let state = response.user_state || '';
-                let zipcode = response.user_zipcode || '';
-                let phonenumber = response.user_phonenumber || '';
+                let address = response.address || '';
+                let city = response.city || '';
+                let state = response.state || '';
+                let zipcode = response.zipcode || '';
+                let phonenumber = response.phonenumber || '';
 
                 // Format the content as HTML
                 let htmlContent = '<div class="book-layout">';
@@ -106,7 +106,7 @@ $(document).ready(function () {
                             <div class="text-left">
                                 <h5>PO Document</h5>
                                 <p>Please upload your Purchase Order document (PDF preferred)</p>
-                                <input type="file" id="poDocument" name="poDocument" class="form-control" accept=".pdf,.doc,.docx" required>
+                                <input type="file" class="form-control" id="poDocument" name="poDocument" accept=".pdf,.doc,.docx" required>
                             </div>
                         `,
                         showCancelButton: true,

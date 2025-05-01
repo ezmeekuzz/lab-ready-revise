@@ -413,4 +413,148 @@ class QuotationsController extends SessionController
             return false;
         }
     }
+    public function submitPO()
+    {
+        helper(['form', 'filesystem']);
+    
+        // Validate the request
+        if (!$this->request->is('post')) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Invalid request method'
+            ]);
+        }
+    
+        // Get form data
+        $address = $this->request->getPost('address');
+        $city = $this->request->getPost('city');
+        $state = $this->request->getPost('state');
+        $zipcode = $this->request->getPost('zipcode');
+        $phoneNumber = $this->request->getPost('phoneNumber');
+        $quotationId = $this->request->getPost('quotationId');
+        $quotationReponseId = $this->request->getPost('quotationReponseId');
+        
+        // Get the uploaded file
+        $poDocument = $this->request->getFile('poDocument');
+        
+        // Validate required fields
+        if (empty($address) || empty($city) || empty($state) || empty($zipcode) || empty($phoneNumber) || !$poDocument->isValid()) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'All fields are required including the PO document'
+            ]);
+        }
+    
+        // Validate file type
+        $allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+        if (!in_array($poDocument->getMimeType(), $allowedTypes)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Only PDF and Word documents are allowed'
+            ]);
+        }
+    
+        // Create upload directory if it doesn't exist
+        $uploadPath = FCPATH . 'uploads/po_documents/';
+        if (!is_dir($uploadPath)) {
+            mkdir($uploadPath, 0755, true);
+        }
+    
+        // Move the uploaded file to a permanent location
+        $newName = $poDocument->getRandomName();
+        
+        if (!$poDocument->hasMoved()) {
+            $poDocument->move($uploadPath, $newName);
+        }
+    
+        // Get quotation details
+        $quotationResponsesModel = new QuotationResponsesModel();
+        $usersModel = new UsersModel();
+        
+        $quotationResponseDetails = $quotationResponsesModel
+            ->join('quotations', 'quotations.quotation_id=quotation_responses.quotation_id', 'left')
+            ->find($quotationReponseId);
+        
+        $userDetails = $usersModel->find(session()->get('user_user_id'));
+    
+        // Update quotation response with shipping info and mark as PO Submitted
+        $updated = $quotationResponsesModel->where('quotation_response_id', $quotationReponseId)
+            ->set([
+                'address' => $address,
+                'city' => $city,
+                'state' => $state,
+                'zipcode' => $zipcode,
+                'phonenumber' => $phoneNumber,
+                'payment_status' => 'PO Submitted',
+                'po_document' => 'uploads/po_documents/' . $newName, // Store relative path
+                'po_submitted_at' => date('Y-m-d H:i:s')
+            ])
+            ->update();
+    
+        if (!$updated) {
+            // Clean up the uploaded file if update failed
+            if (file_exists($uploadPath . $newName)) {
+                unlink($uploadPath . $newName);
+            }
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to update quotation details'
+            ]);
+        }
+    
+        // Prepare data for email
+        $data = [
+            'userDetails' => $userDetails,
+            'quotationResponseDetails' => $quotationResponseDetails,
+            'address' => $address,
+            'city' => $city,
+            'state' => $state,
+            'zipcode' => $zipcode,
+            'phonenumber' => $phoneNumber,
+            'poDocumentPath' => $uploadPath . $newName
+        ];
+    
+        // Send email notification
+        $this->sendPOSubmissionEmail($data);
+    
+        return $this->response->setJSON([
+            'success' => true,
+            'message' => 'Your PO has been submitted successfully. We will process your order and notify you once it\'s completed.'
+        ]);
+    }
+    
+    private function sendPOSubmissionEmail($data)
+    {
+        try {
+            $email = \Config\Services::email();
+            
+            $emailData = [
+                'user' => $data['userDetails'], // Make sure this is an array with user details
+                'quotation' => [
+                    'reference_number' => $data['quotationResponseDetails']['reference_number'] ?? 'N/A',
+                    'quotation_name' => $data['quotationResponseDetails']['quotation_name'] ?? 'Unnamed Quotation',
+                    'price' => $data['quotationResponseDetails']['price'] ?? 0
+                ],
+                'shipping' => [
+                    'address' => $data['address'],
+                    'city' => $data['city'],
+                    'state' => $data['state'],
+                    'zipcode' => $data['zipcode'],
+                    'phone' => $data['phonenumber']
+                ],
+                'date' => date('F j, Y g:i a')
+            ];
+    
+            $email->setTo('admin@example.com');
+            $email->setSubject('PO Submitted: ' . $emailData['quotation']['reference_number']);
+            $email->setMessage(view('emails/po_submission', $emailData));
+            $email->attach($data['poDocumentPath']);
+            
+            $email->send();
+    
+        } catch (\Exception $e) {
+            log_message('error', 'Email Error: '.$e->getMessage());
+        }
+    }   
 }

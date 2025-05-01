@@ -26,6 +26,7 @@ $routes->post('/quotationmasterlist/updateStatus/(:num)', 'Admin\QuotationMaster
 $routes->post('/quotationmasterlist/updateShipment/(:num)', 'Admin\QuotationMasterlistController::updateShipment/$1');
 $routes->get('/quotationmasterlist/getShipment/(:num)', 'Admin\QuotationMasterlistController::getShipment/$1');
 $routes->post('/quotationmasterlist/updateDeliveryDate/(:num)', 'Admin\QuotationMasterlistController::updateDeliveryDate/$1');
+$routes->post('/quotationmasterlist/sendInvoice', 'Admin\QuotationMasterlistController::sendInvoice');
 $routes->get('/dashboard/getData', 'Admin\DashboardController::getData');
 $routes->get('/send-quotation', 'Admin\SendQuotationController::index');
 $routes->post('/sendquotation/insert', 'Admin\SendQuotationController::insert');
@@ -76,6 +77,7 @@ $routes->get('/quotations/getData', 'User\QuotationsController::getData');
 $routes->get('/quotations/quotationDetails', 'User\QuotationsController::quotationDetails');
 $routes->delete('/quotations/delete/(:num)', 'User\QuotationsController::deleteQuotation/$1');
 $routes->post('/quotations/requestPOApproval', 'User\QuotationsController::requestPOApproval');
+$routes->post('/quotations/submitPO', 'User\QuotationsController::submitPO');
 /*User*/
 
 $routes->get('/', 'HomeController::index');

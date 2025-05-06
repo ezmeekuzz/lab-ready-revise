@@ -271,7 +271,7 @@ class QuotationMasterlistController extends SessionController
             'referenceNumber' => $referenceNumber,
             'invoiceNumber' => $invoiceNumber,
             'message' => $message,
-            'invoiceLink' => base_url("quotations/viewInvoice/{$quotationResponseId}"),
+            'invoiceLink' => base_url("{$invoicePath}"),
             'date' => date('F j, Y')
         ];
         

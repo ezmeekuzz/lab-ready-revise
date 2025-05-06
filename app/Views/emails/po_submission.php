@@ -37,7 +37,7 @@
                 
                 <h3>Customer Information</h3>
                 <div class="detail-row">
-                    <span class="label">Name:</span> <?= esc($user['first_name'] ?? '') ?> <?= esc($user['last_name'] ?? '') ?>
+                    <span class="label">Name:</span> <?= esc($user['fullname'] ?? '') ?>
                 </div>
                 <div class="detail-row">
                     <span class="label">Email:</span> <?= esc($user['email'] ?? 'N/A') ?>

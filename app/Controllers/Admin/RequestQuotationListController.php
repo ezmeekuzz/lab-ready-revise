@@ -171,9 +171,9 @@ class RequestQuotationListController extends SessionController
     
         // Add each field on a new line
         $fields = [
-            'Material/Finish Details' => $quotation['material_finish_details'] ?? 'N/A',
+            'Material/Finish Details' => $quotation['other_i'] ?? 'N/A',
             'Quantity to Quote' => $quotation['quantity_to_quote'] ?? 'N/A',
-            'Other Relevant Details' => $quotation['other_relevant_details'] ?? 'N/A'
+            'Other Relevant Details' => $quotation['relevant_details'] ?? 'N/A'
         ];
     
         foreach ($fields as $label => $value) {

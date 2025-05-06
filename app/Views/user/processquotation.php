@@ -10,7 +10,7 @@
     height: 100%;
 }
 </style>
-<div class="app-container">
+<div class="app-container" id="uploadArea">
     <?=$this->include('user/sidebar');?>
     <div class="app-main" id="main">
         <div class="container-fluid">
@@ -36,7 +36,7 @@
                             <h5 class="text-muted" id="dropFilesLabel">Drop Your Files</h5>
                             <form id="requestquotation">
                                 <div class="form-group">
-                                    <div class="upload-area" id="uploadArea">
+                                    <div class="upload-area">
                                         <i class="fa fa-upload fa-2x text-muted"></i>
                                         <p class="text-muted">Drag & Drop CAD models (<b>STEP or STL only</b>)</p>
                                         <button type="button" id="fileSelectBtn">Select Files</button>

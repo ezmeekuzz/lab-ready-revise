@@ -23,7 +23,7 @@
         <div class="content">
             <p class="thank-you">Thank you for your purchase order submission!</p>
             
-            <p>Dear <?= $user['first_name'] ?>,</p>
+            <p>Dear <?= $user['fullname'] ?>,</p>
             
             <p>We've received your purchase order for the following quotation:</p>
             

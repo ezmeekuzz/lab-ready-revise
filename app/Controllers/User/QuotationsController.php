@@ -546,7 +546,7 @@ class QuotationsController extends SessionController
                 'date' => date('F j, Y g:i a')
             ];
     
-            $email->setTo('admin@example.com');
+            $email->setTo('rustomcodilan@gmail.com');
             $email->setSubject('PO Submitted: ' . $emailData['quotation']['reference_number']);
             $email->setMessage(view('emails/po_submission', $emailData));
             $email->attach($data['poDocumentPath']);

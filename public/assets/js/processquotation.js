@@ -65,6 +65,9 @@ document.addEventListener("DOMContentLoaded", function () {
         ],
         "createdRow": function (row, data, dataIndex) {
             $(row).attr('data-id', data.item_id);
+            $('#materialFinishTextarea').val(data.other_information);
+            $('#quantityTextarea').val(data.quantity_to_quote);
+            $('#otherDetailsTextarea').val(data.relevant_details);
         },
         "initComplete": function (settings, json) {
             $(this).trigger('dt-init-complete');

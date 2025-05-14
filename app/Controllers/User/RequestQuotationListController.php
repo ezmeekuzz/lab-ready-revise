@@ -28,8 +28,10 @@ class RequestQuotationListController extends SessionController
     
         // Start your datatable query
         $query = datatables('quotations')
+            ->join('quotation_responses', 'quotation_responses.quotation_id=quotations.quotation_id', 'left')
             ->where('status !=', 'Ongoing')
-            ->where('user_id', session()->get('user_user_id'));
+            ->where('user_id', session()->get('user_user_id'))
+            ->select('quotations.*', 'quotation_responses.*');
 
         // If only year is provided, filter by the year
         if ($year) {
@@ -106,6 +108,9 @@ class RequestQuotationListController extends SessionController
             'user_id' => session()->get('user_user_id'),
             'quotation_name' => $newName,
             'reference_number' => $referenceNumber,
+            'other_information' => $quotation['other_information'],
+            'quantity_to_quote' => $quotation['quantity_to_quote'],
+            'relevant_details' => $quotation['relevant_details'],
             'status' => 'Pending',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),

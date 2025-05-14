@@ -43,13 +43,6 @@
             <div class="value">
                 <span class="label">Amount:</span> $<?= number_format($quotation['price'], 2) ?>
             </div>
-            
-            <?php if (!empty($notes)): ?>
-            <h3>Additional Notes</h3>
-            <div class="value">
-                <?= nl2br(esc($notes)) ?>
-            </div>
-            <?php endif; ?>
         </div>
         
         <div class="footer">

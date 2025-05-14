@@ -66,13 +66,12 @@
                                 </thead>
                             </table>
                             <form id="submitQuotation" class="mt-5">
-                                <h5>Fill in the sections below in a casual manner as you might in a text or email</h5>
+                                <h5>Fill in the sections below in a casual manner as you might in a text or email (only use these sections to provide information that is NOT on the prints... no need to provide information twice)</h5>
 
                                 <!-- Section 1: Material and Surface Finish Details -->
                                 <div class="text-start mt-4" id="material-finish-section">
                                     <label>Enter Material and Surface Finish Details</label>
-                                    <textarea class="form-control" rows="3" placeholder="Only use this section to provide information that is not on the prints (no need to provide information twice). 
-                            Examples: Laser marking needed? Assembly needed?" id="materialFinishTextarea" style="min-height: 150px; resize: none; width: 100%;"></textarea>
+                                    <textarea class="form-control" rows="3" placeholder="Examples: 17-4 H900 (glass bead), Ti-6Al-4V (Anodized green), etc." id="materialFinishTextarea" style="min-height: 150px; resize: none; width: 100%;"></textarea>
                                 </div>
 
                                 <!-- Section 2: Quantity(s) to Quote -->

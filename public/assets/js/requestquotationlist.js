@@ -23,17 +23,17 @@ $(document).ready(function () {
 
                     if (data === 'Pending') {
                         statusClass = 'badge-warning p-1 rounded';
-                        stat = "Pending";
+                        stat = "Ongoing";
                     } else if (data === 'Submitted') {
                         statusClass = 'badge-success p-1 rounded';
-                        stat = "Quote Sent (See Quotes Page)";
+                        stat = "Pending";
                     } else if (data === 'Shipped') {
                         statusClass = 'badge-success p-1 rounded';
                         stat = "Shipped (Track Order)";
                         link = `<a href="/requestquotationlist/shipmentLink/${row.quotation_id}" target="_blank" style="color: inherit; text-decoration: none;">${stat}</a>`;
                     } else {
                         statusClass = 'badge-info p-1 rounded';
-                        stat = "On Hold! Awaiting Submission";
+                        stat = "Quote has arrived. See quote page";
                     }
                     return link !== '' ? `<span class="${statusClass}">${link}</span>` : `<span class="${statusClass}">${stat}</span>`;
                 }
@@ -87,11 +87,11 @@ $(document).ready(function () {
         let status = $(this).data('status');
         let id = $(this).data('id');
 
-        if (status !== 'Pending') {
+        if (status === 'Done') {
             Swal.fire({
                 icon: 'warning',
                 title: 'Action Not Allowed',
-                text: 'You can only edit quotations with a Pending status.',
+                text: 'You can only edit quotations with a Ongoing/Pending status.',
             });
         } else {
             window.location.href = `/process-quotation/${id}`;

@@ -21,11 +21,12 @@ $(document).ready(function () {
                 let state = response.state || '';
                 let zipcode = response.zipcode || '';
                 let phonenumber = response.phonenumber || '';
+                let referenceNumber = response.reference_number || '';
 
                 // Format the content as HTML
                 let htmlContent = '<div class="book-layout">';
                 htmlContent += '<div id="pdfViewer" class="pdf-viewer" style="width:100%; border:1px solid #ccc;"></div>';
-                htmlContent += '<a href="' + invoiceFile + '" class="btn btn-primary mt-3" download="'+productName+'.pdf" class="btn-download-pdf">Download PDF</a>';
+                htmlContent += '<a href="' + invoiceFile + '" class="btn btn-primary mt-3" download="'+referenceNumber+'.pdf" class="btn-download-pdf">Download PDF</a>';
                 htmlContent += '<div class="book-details mt-3">';
                 htmlContent += '<div class="date mt-3"><strong>DATE:</strong> ' + quotationDate + '</div>';
                 htmlContent += '<div class="date mt-3"><strong>Amount:</strong> ' + productPrice + '</div>';
@@ -176,11 +177,6 @@ $(document).ready(function () {
                     Swal.fire({
                         title: 'Request PO Payment Approval',
                         html: `
-                            <div class="mb-3">
-                                <p>Please provide details about your PO payment request:</p>
-                                <textarea id="requestNotes" class="form-control" rows="4" 
-                                    placeholder="Example: Our company requires PO payments. Our accounting department will process payment upon approval. Purchase order number will be provided once approved."></textarea>
-                            </div>
                             <div class="alert alert-info mt-2">
                                 <i class="fas fa-info-circle"></i> We typically respond to approval requests within 1-2 business days.
                             </div>
@@ -189,14 +185,6 @@ $(document).ready(function () {
                         confirmButtonText: 'Submit Request',
                         cancelButtonText: 'Cancel',
                         focusConfirm: false,
-                        preConfirm: () => {
-                            const notes = $('#requestNotes').val().trim();
-                            if (!notes) {
-                                Swal.showValidationMessage('Please provide some details about your request');
-                                return false;
-                            }
-                            return { notes };
-                        }
                     }).then((result) => {
                         if (result.isConfirmed) {
                             Swal.fire({
@@ -211,7 +199,6 @@ $(document).ready(function () {
                                 data: {
                                     quotationId: quotationId,
                                     quotationReponseId: quotationReponseId,
-                                    notes: result.value.notes
                                 },
                                 success: function(response) {
                                     Swal.fire({

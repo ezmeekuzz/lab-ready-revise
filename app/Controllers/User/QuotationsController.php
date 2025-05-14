@@ -237,6 +237,7 @@ class QuotationsController extends SessionController
         $zipcode = $this->request->getPost('zipcode');
         $phoneNumber = $this->request->getPost('phoneNumber');
         $quotationId = $this->request->getPost('quotationId');
+        $quotationReponseId = $this->request->getPost('quotationReponseId');
     
         // Get API credentials
         $config = new \Config\AuthorizeNet();
@@ -359,7 +360,6 @@ class QuotationsController extends SessionController
     {
         $quotationId = $this->request->getPost('quotationId');
         $quotationReponseId = $this->request->getPost('quotationReponseId');
-        $notes = $this->request->getPost('notes') ?? '';
 
         // Get user and quotation details
         $usersModel = new UsersModel();
@@ -374,11 +374,10 @@ class QuotationsController extends SessionController
         $poRequestsModel = new PORequestsModel();
         $poRequestsModel->insert([
             'user_id' => session()->get('user_user_id'),
-            'notes' => $notes
         ]);
 
         // Send email via queue
-        $this->sendPOApprovalRequestEmail($userDetails, $quotationResponseDetails, $notes);
+        $this->sendPOApprovalRequestEmail($userDetails, $quotationResponseDetails);
 
         return $this->response->setJSON([
             'success' => true,
@@ -386,7 +385,7 @@ class QuotationsController extends SessionController
         ]);
     }
 
-    private function sendPOApprovalRequestEmail($userDetails, $quotationDetails, $notes)
+    private function sendPOApprovalRequestEmail($userDetails, $quotationDetails)
     {
         try {
             $email = \Config\Services::email();
@@ -399,7 +398,6 @@ class QuotationsController extends SessionController
                     'quotation_name' => $quotationDetails['quotation_name'] ?? 'Unnamed Quotation',
                     'price' => $quotationDetails['price'] ?? 0
                 ],
-                'notes' => $notes,
                 'date' => date('F j, Y g:i a')
             ];
     

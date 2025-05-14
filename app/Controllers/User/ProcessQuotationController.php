@@ -37,6 +37,7 @@ class ProcessQuotationController extends SessionController
         $quotation = $quotationsModel->where('quotation_id', $quotationId)
                 ->where('user_id', $userId)
                 ->where('status', 'Pending')
+                ->orWhere('status', 'Submitted')
                 ->first();
 
         if (!$quotation) {
@@ -117,11 +118,11 @@ class ProcessQuotationController extends SessionController
     public function getData()
     {
         return datatables('items')
-        ->join('quotations', 'quotations.quotation_id=items.quotation_id', 'left')
-        ->where('quotations.user_id', session()->get('user_user_id'))
-        ->where('quotations.quotation_id', session()->get('quotation_id'))
-        ->where('quotations.status', 'Pending')
-        ->make();
+            ->join('quotations', 'quotations.quotation_id=items.quotation_id', 'left')
+            ->where('quotations.user_id', session()->get('user_user_id'))
+            ->where('quotations.quotation_id', session()->get('quotation_id'))
+            ->where('(quotations.status = "Pending" OR quotations.status = "Submitted")', null, false)
+            ->make();
     }
     public function uploadSingleFile()
     {
